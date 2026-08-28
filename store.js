@@ -24,7 +24,7 @@ const DEFAULT_PREFS = {
   theme: 'dark',
   calType: 'A',        // A 사진 달력 / C 아이콘 달력 (개발지시서 병행안)
   unit: 'kg',
-  restSec: 90,
+  restSec: 60,         // 기본 휴식 1분 (하체 종목은 1분 30초, 종목별로 저장되면 그 값)
   restAuto: true,
   sound: true,
   grid: false,

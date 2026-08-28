@@ -781,3 +781,6 @@ body{padding-bottom:calc(var(--navh) + var(--safeb) + 48px);}
 /* 아이콘 달력(C): 아이콘이 숫자를 가리지 않게 아래쪽으로 */
 .day .cico{top:auto; bottom:22%; transform:translate(-50%,0); width:20px; height:20px;}
 .day .hintcam{top:auto; bottom:20%; transform:translate(-50%,0);}
+
+/* 타이머 미사용(설정): 버튼·바·패널 전부 숨김 */
+body.notimer #timerFab, body.notimer #restBar, body.notimer #timerPanel{display:none !important;}

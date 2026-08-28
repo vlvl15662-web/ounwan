@@ -166,6 +166,7 @@ function applyPrefs() {
   const meta = document.querySelector('meta[name=theme-color]');
   if (meta) meta.setAttribute('content', S.prefs.theme === 'light' ? '#F6F6F7' : '#141414');
   $('gridLines').classList.toggle('on', !!S.prefs.grid);
+  document.body.classList.toggle('notimer', S.prefs.timerOn === false);   // 타이머 미사용: 버튼·바 숨김
 }
 function accentHex() {
   return getComputedStyle(document.documentElement).getPropertyValue('--ac').trim() || '#C8FF4D';
@@ -443,6 +444,7 @@ function exCard(L, e, i) {
 
   const meta = [];
   meta.push(`${doneN}/${sets.length}세트`);
+  if (S.prefs.timerOn !== false) meta.push(`휴식 ${fmtT(restFor(L, e) * 1000)}`);
   const best = sets.filter(s => s.done).reduce((m, s) => Math.max(m, +s.kg || 0), 0);
   if (best) meta.push(`${best}kg`);
   const pr = S.pr[e.id];
@@ -519,7 +521,7 @@ function exCard(L, e, i) {
         if (s.kg === '' || s.kg == null) s.kg = e.prev ? e.prev.kg : 0;
         if (!s.reps) s.reps = e.reps || 10;
         touchSession(L);
-        if (S.prefs.restAuto) startRest(e.nm, si + 1);
+        if (S.prefs.restAuto) startRest(e.nm, si + 1, restFor(L, e), { L, e });
         haptic(14);
       }
       afterSetChange(L, s.done);
@@ -731,6 +733,22 @@ function showCelebrate(L) {
 }
 $('cbGoCam').onclick = () => { $('celebrate').classList.remove('on'); go('cam'); };
 $('cbLater').onclick = () => { $('celebrate').classList.remove('on'); renderToday(); };
+/** 사진 없이 오늘 기록만 확정 — 세션을 닫고 캘린더에 "운동만" 표시로 남긴다 */
+function saveNoPhoto() {
+  const L = todayLog();
+  if (!OW.isWorkoutDay(L)) { toast('체크한 세트가 없어 저장할 기록이 없습니다', 'bad'); return false; }
+  if (!L.start) L.start = Date.now() - 1000;
+  if (!L.end) L.end = Date.now();
+  L.celebrated = true;
+  OW.save(true);
+  $('celebrate').classList.remove('on');
+  stopRest(false);
+  toast('기록을 저장했습니다 · 캘린더에 남았습니다', 'ok');
+  go('cal');
+  return true;
+}
+$('cbNoPhoto').onclick = saveNoPhoto;
+$('btnNoPhoto').onclick = saveNoPhoto;
 
 function confetti() {
   const c = $('confetti'); c.style.display = 'block';
@@ -775,12 +793,55 @@ function restDefault() { return Math.max(10, Math.min(600, +S.prefs.restSec || 9
 function restLeft() { return restState === 'paused' ? restLeftPaused : Math.max(0, restEnd - Date.now()); }
 function fmtT(ms) { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + OW.pad(s % 60); }
 let restLabel = '';
+/** 지금 타이머가 어느 종목의 것인지 — 시간을 조절하면 그 종목의 휴식시간으로 저장된다 */
+let restCtx = null, restSaveT = null;
 /** 상단 알림(네이티브)에 현재 상태를 밀어 넣는다 — 백그라운드에서도 카운트다운·종료 알림이 뜬다 */
 function syncNativeRest() {
   if (!NATIVE.on) return;
   NATIVE.restTimer({ running: restState === 'running', endAt: restEnd, label: restLabel || '휴식 중' });
 }
-function startRest(exName, setNo, sec) {
+/* ── 종목별 휴식시간 ──
+   우선순위: 이 종목에 저장된 값 → 루틴에 저장된 값 → 첫 종목의 값 → 부위 기본(하체 90초, 그 외 설정값·기본 60초) */
+function partDefaultRest(e) { return (e && e.part === '하체') ? Math.max(90, restDefault()) : restDefault(); }
+function routineRest(L, e) {
+  const day = L && OW.routineDay(L.dayIdx);
+  const r = day && day.ex.find(x => x.id === e.id);
+  return r && +r.rest > 0 ? +r.rest : 0;
+}
+function restFor(L, e) {
+  if (!e) return restDefault();
+  if (+e.rest > 0) return +e.rest;
+  const rr = routineRest(L, e); if (rr) return rr;
+  const first = L && L.ex && L.ex[0];
+  if (first && first !== e) {
+    if (+first.rest > 0) return +first.rest;
+    const fr = routineRest(L, first); if (fr) return fr;
+  }
+  return partDefaultRest(e);
+}
+/** 종목 휴식시간 저장 — 오늘 기록과 루틴(다음 날들) 양쪽에 */
+function setExRest(L, e, sec) {
+  sec = Math.max(10, Math.min(600, Math.round(sec)));
+  e.rest = sec;
+  const day = L && OW.routineDay(L.dayIdx);
+  const r = day && day.ex.find(x => x.id === e.id);
+  if (r) r.rest = sec;
+  OW.save();
+}
+/** 타이머를 조절한 뒤 잠깐 멈추면 그 종목의 휴식시간으로 확정·저장한다 */
+function rememberRestForCtx() {
+  if (!restCtx || restState === 'idle') return;
+  clearTimeout(restSaveT);
+  restSaveT = setTimeout(() => {
+    if (!restCtx) return;
+    setExRest(restCtx.L, restCtx.e, restTotal);
+    toast(`${restCtx.e.nm} 휴식 ${fmtT(restTotal * 1000)}으로 저장 — 다음부터 자동 적용`, 'ok');
+    if (curPage === 'today') renderExList(restCtx.L);
+  }, 900);
+}
+function startRest(exName, setNo, sec, ctx) {
+  if (S.prefs.timerOn === false) return;         // 설정에서 타이머를 껐으면 아무것도 하지 않는다
+  restCtx = ctx || null;
   restTotal = sec || restDefault();
   restEnd = Date.now() + restTotal * 1000;
   restState = 'running';
@@ -823,13 +884,15 @@ function adjustRest(d) {
   if (restState === 'idle') { tpDur = Math.max(10, Math.min(600, (tpDur || restDefault()) + d)); syncTimerUI(); return; }
   if (restState === 'paused') restLeftPaused = Math.max(0, restLeftPaused + d * 1000);
   else restEnd += d * 1000;
-  restTotal = Math.max(1, restTotal + d);
+  restTotal = Math.max(10, restTotal + d);
   tickRest(); syncNativeRest();
+  rememberRestForCtx();
 }
 function stopRest(rang) {
   if (restT) { clearInterval(restT); restT = null; }
   const was = restState;
   restState = 'idle';
+  restCtx = null; clearTimeout(restSaveT);
   $('restBar').classList.remove('on');
   syncTimerUI();
   if (was !== 'idle') syncNativeRest();
@@ -867,7 +930,8 @@ function openTimerPanel() {
       if (restState === 'idle') { tpDur = s; syncTimerUI(); return; }
       restTotal = s; restEnd = Date.now() + s * 1000;
       if (restState === 'paused') restLeftPaused = s * 1000;
-      tickRest();
+      tickRest(); syncNativeRest();
+      rememberRestForCtx();
     };
     pr.appendChild(b);
   });
@@ -2019,6 +2083,7 @@ function renderSettings() {
 
   sw('swLogo', S.prefs.logo); sw('swGrid', S.prefs.grid); sw('swMirror', S.prefs.mirror);
   sw('swTheme', S.prefs.theme === 'light'); sw('swRestAuto', S.prefs.restAuto); sw('swSound', S.prefs.sound);
+  sw('swTimer', S.prefs.timerOn !== false);
   $$('#swatches button').forEach(b => b.classList.toggle('on', b.dataset.a === S.prefs.accent));
   checkStorage();
 }
@@ -2038,6 +2103,12 @@ bindSw('swLogo', 'logo', () => { if (camOpts.fields) camOpts.fields.logo = !!S.p
 bindSw('swGrid', 'grid', applyPrefs);
 bindSw('swMirror', 'mirror');
 bindSw('swRestAuto', 'restAuto');
+$('swTimer').onclick = () => {
+  S.prefs.timerOn = S.prefs.timerOn === false;   // undefined(기본 켜짐) → false, false → true
+  OW.save(); sw('swTimer', S.prefs.timerOn !== false);
+  if (S.prefs.timerOn === false) { stopRest(false); closeTimerPanel(); }
+  applyPrefs();
+};
 bindSw('swSound', 'sound', () => { if (S.prefs.sound) beep(1); });
 $('swTheme').onclick = () => {
   S.prefs.theme = S.prefs.theme === 'light' ? 'dark' : 'light';
@@ -2285,6 +2356,7 @@ g.OWAPP = { go, renderToday, renderCal, renderStats, toast, S: () => S,
   /* 검증 스크립트용 훅 */
   _t: { syncTodayWithRoutine, hashtags, defaultHashtags, adjustRest, startRest, stopRest, pauseRest, resumeRest,
         restState: () => restState, restLeft, onBack, openTimerPanel, closeTimerPanel, camOpts: () => camOpts,
-        setViewDate: k => { viewDate = k; }, viewDate: () => viewDate, showDay } };
+        setViewDate: k => { viewDate = k; }, viewDate: () => viewDate, showDay,
+        restFor, setExRest, saveNoPhoto, restTotal: () => restTotal } };
 
 })(window);
