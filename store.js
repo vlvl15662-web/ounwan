@@ -321,19 +321,37 @@ function routineDay(idx) {
   return S.routine[((idx % S.routine.length) + S.routine.length) % S.routine.length];
 }
 
+/* ── 부위별 루틴 2안 ──
+   같은 부위라도 분할 순서에 따라 종목이 다를 수 있다(등1 랫풀다운 / 등2 케이블 암풀다운).
+   day.ex = 1안, day.ex2 = 2안. 2안이 비어 있으면 항상 1안. 2안이 있으면 그 부위가 돌아올 때마다 번갈아 쓴다(day.turn). */
+function dayVariant(day, v) {
+  if (!day) return [];
+  return (v === 1 && Array.isArray(day.ex2) && day.ex2.length) ? day.ex2 : (day.ex || []);
+}
+function hasVariant2(day) { return !!(day && Array.isArray(day.ex2) && day.ex2.length); }
+/** 새 기록을 만들 때 이번 차례의 안을 고르고, 다음 차례를 뒤집는다 */
+function pickVariant(day) {
+  if (!hasVariant2(day)) return 0;
+  const v = day.turn === 1 ? 1 : 0;
+  day.turn = 1 - v;
+  return v;
+}
+
 /** 오늘 로그를 가져오거나 만든다. 루틴 스냅샷을 떠서 넣으므로 이후 루틴 편집에 영향받지 않음 (F1-4) */
 function ensureLog(k, forceIdx) {
   k = k || today();
   if (S.logs[k]) return S.logs[k];
   const idx = (forceIdx == null) ? S.dayIdx : forceIdx;
   const day = routineDay(idx);
+  const variant = pickVariant(day);
   const log = {
     date: k,
     dayIdx: idx,
+    variant,
     label: day ? day.label : '운동',
     start: null,
     end: null,
-    ex: day ? day.ex.map(e => ({
+    ex: day ? dayVariant(day, variant).map(e => ({
       id: e.id, nm: e.nm, part: e.part, unit: e.unit || 'kg',
       sets: Array.from({ length: e.sets || 3 }, () => ({ kg: '', reps: e.reps || 10, done: false })),
       note: ''
@@ -445,6 +463,12 @@ function validateState(st) {
     if (d.ex.length > LIMITS.exPerDay) bad('종목 수 초과');
     d.label = String(d.label == null ? '운동' : d.label).slice(0, LIMITS.nameLen);
     d.ex.forEach(e => { if (!e || typeof e !== 'object') bad('종목 형식'); e.nm = String(e.nm || '').slice(0, LIMITS.nameLen); });
+    if (d.ex2 != null) {
+      if (!Array.isArray(d.ex2)) bad('루틴 2안 형식');
+      if (d.ex2.length > LIMITS.exPerDay) bad('2안 종목 수 초과');
+      d.ex2.forEach(e => { if (!e || typeof e !== 'object') bad('2안 종목 형식'); e.nm = String(e.nm || '').slice(0, LIMITS.nameLen); });
+    }
+    d.turn = d.turn === 1 ? 1 : 0;
   });
   if (st.logs && (typeof st.logs !== 'object' || Array.isArray(st.logs))) bad('기록 형식');
   const lk = Object.keys(st.logs || {});
@@ -567,7 +591,7 @@ Object.assign(g.OW, {
   isWorkoutDay, doneSetCount, doneExCount, fullDoneExCount, doneExercises,
   volumeOf, durationOf, streak, streakForPhoto, totalDays, weekDays, monthStats,
   e1rm, updatePR, prList,
-  isRestDay, routineDay, ensureLog, prefill, pruneEmptyLogs,
+  isRestDay, routineDay, dayVariant, hasVariant2, pickVariant, ensureLog, prefill, pruneEmptyLogs,
   exportBackup, exportBackupBlob, importBackup, validateState, deepClean,
   storageInfo, purgeOldPhotos,
   blobToDataURL, dataURLToBlob

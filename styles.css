@@ -784,3 +784,10 @@ body{padding-bottom:calc(var(--navh) + var(--safeb) + 48px);}
 
 /* 타이머 미사용(설정): 버튼·바·패널 전부 숨김 */
 body.notimer #timerFab, body.notimer #restBar, body.notimer #timerPanel{display:none !important;}
+
+/* 본문 하단 여백: 네비 + 돌출 카메라 버튼 + 타이머 원형 버튼(56px)까지 감안. 하단 바가 떠 있으면 그만큼 더 */
+body{padding-bottom:calc(var(--navh) + var(--safeb) + 96px);}
+body.restbar{padding-bottom:calc(var(--navh) + var(--safeb) + 176px);}
+/* 루틴 편집: 1안/2안 탭 줄 */
+.varrow{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+.varrow .chips{flex:1; margin:0;}

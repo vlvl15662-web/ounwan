@@ -182,6 +182,12 @@ function go(pg) {
   $$('nav .tab').forEach(b => b.classList.toggle('on', b.dataset.pg === pg));
   if (pg !== 'cam') stopCamera();
   if (pg !== 'today' && pg !== 'cam') viewDate = null;      // 다른 탭으로 가면 지난 날짜 편집 종료
+  /* 오운완 버튼 = 운동 끝. 진행 중이던 운동 시간을 여기서 닫아 오버레이에 그 시간이 들어간다.
+     (사진 뒤에 세트를 더 체크하면 touchSession이 다시 연다) */
+  if (pg === 'cam' && !viewDate) {
+    const L = S.logs[OW.today()];
+    if (L && L.start && !L.end) { L.end = Date.now(); OW.save(); renderSession(L); }
+  }
   const titles = { today: '오운완', cal: '캘린더', cam: '오운완 남기기', stat: '통계', set: '설정' };
   let title = titles[pg] || '오운완';
   if (viewDate) { const d = OW.parseKey(viewDate); title = `${d.getMonth() + 1}/${d.getDate()} ` + (pg === 'cam' ? '오운완 남기기' : '기록 수정'); }
@@ -341,7 +347,7 @@ function renderToday() {
 
   const L = todayLog();
   const splitName = S.split === 'custom' ? '커스텀' : (D.SPLIT_PRESETS[S.split] || {}).name || '';
-  $('todayLabel').textContent = `${splitName} · ${L.label}`;
+  $('todayLabel').textContent = `${splitName} · ${L.label}${L.variant === 1 ? ' (2안)' : (OW.hasVariant2(OW.routineDay(L.dayIdx)) ? ' (1안)' : '')}`;
 
   renderExList(L);
   renderProgress(L);
@@ -637,8 +643,9 @@ function swipeToDelete(row, onDelete) {
   row.addEventListener('pointercancel', end);
 }
 
+/** 첫 세트를 체크하는 순간 운동은 이미 1분쯤 진행된 뒤다 — 시작 시각을 1분 앞당겨 잡는다 */
 function touchSession(L) {
-  if (!L.start) { L.start = Date.now(); renderSession(L); }
+  if (!L.start) { L.start = Date.now() - 60000; renderSession(L); }
   if (L.end) L.end = null;
 }
 function afterSetChange(L, turnedOn) {
@@ -805,7 +812,7 @@ function syncNativeRest() {
 function partDefaultRest(e) { return (e && e.part === '하체') ? Math.max(90, restDefault()) : restDefault(); }
 function routineRest(L, e) {
   const day = L && OW.routineDay(L.dayIdx);
-  const r = day && day.ex.find(x => x.id === e.id);
+  const r = day && OW.dayVariant(day, L.variant).find(x => x.id === e.id);
   return r && +r.rest > 0 ? +r.rest : 0;
 }
 function restFor(L, e) {
@@ -824,7 +831,7 @@ function setExRest(L, e, sec) {
   sec = Math.max(10, Math.min(600, Math.round(sec)));
   e.rest = sec;
   const day = L && OW.routineDay(L.dayIdx);
-  const r = day && day.ex.find(x => x.id === e.id);
+  const r = day && OW.dayVariant(day, L.variant).find(x => x.id === e.id);
   if (r) r.rest = sec;
   OW.save();
 }
@@ -848,6 +855,7 @@ function startRest(exName, setNo, sec, ctx) {
   restLabel = exName ? `${exName} ${setNo}세트 끝` : '수동 타이머';
   $('restNext').textContent = restLabel;
   $('restBar').classList.add('on');
+  document.body.classList.add('restbar');       // 하단 바 높이만큼 본문 여백을 더 준다 (오운완 버튼이 안 가리게)
   if (restT) clearInterval(restT);
   restT = setInterval(tickRest, 200);
   tickRest();
@@ -894,6 +902,7 @@ function stopRest(rang) {
   restState = 'idle';
   restCtx = null; clearTimeout(restSaveT);
   $('restBar').classList.remove('on');
+  document.body.classList.remove('restbar');
   syncTimerUI();
   if (was !== 'idle') syncNativeRest();
   if (rang) { beep(2); haptic([30, 80, 30]); }
@@ -982,8 +991,9 @@ $('btnSwapDay').onclick = async () => {
   (S.logs[k] && S.logs[k].photos || []).length ? null : delete S.logs[k];
   if (S.logs[k]) { // 사진이 있으면 로그는 유지하고 종목만 교체
     const day = OW.routineDay(pick);
-    S.logs[k].dayIdx = pick; S.logs[k].label = day.label;
-    S.logs[k].ex = day.ex.map(e => ({ id: e.id, nm: e.nm, part: e.part, unit: e.unit || 'kg',
+    const variant = OW.pickVariant(day);
+    S.logs[k].dayIdx = pick; S.logs[k].label = day.label; S.logs[k].variant = variant;
+    S.logs[k].ex = OW.dayVariant(day, variant).map(e => ({ id: e.id, nm: e.nm, part: e.part, unit: e.unit || 'kg',
       sets: Array.from({ length: e.sets || 3 }, () => ({ kg: '', reps: e.reps || 10, done: false })), note: '' }));
     OW.prefill(S.logs[k]);
   } else {
@@ -1081,7 +1091,9 @@ function commitPicker() {
     }));
     OW.prefill(L); OW.save(true); renderToday();
   } else {
-    S.routine[pkTarget.dayIdx].ex.push(...pkPicked);
+    const rday = S.routine[pkTarget.dayIdx];
+    if (pkTarget.variant === 1) { if (!Array.isArray(rday.ex2)) rday.ex2 = []; rday.ex2.push(...pkPicked); }
+    else rday.ex.push(...pkPicked);
     /* 오늘 목록에서 뺐던 종목을 루틴에 다시 넣으면 다시 보이게 한다 */
     const L = S.logs[curKey()];
     if (L && L.hidden) L.hidden = L.hidden.filter(id => !pkPicked.some(p => p.id === id));
@@ -1094,15 +1106,28 @@ $('btnAddEx').onclick = () => openPicker({ type: 'today' });
 
 /* ══════════════════ 루틴 편집 ══════════════════ */
 let rtDay = 0;
+let rtVar = 0;                                   // 편집 중인 안: 0 = 1안, 1 = 2안
 $('btnEditRoutine').onclick = () => {
   const L = S.logs[curKey()];
   rtDay = L ? L.dayIdx % S.routine.length : S.dayIdx;
+  rtVar = L && L.variant === 1 ? 1 : 0;
   $('mRoutine').classList.add('on');
   renderRoutineEditor();
 };
+/** 편집 중인 안의 종목 배열 (2안은 처음 열 때 만들어진다) */
+function rtPlan(day) {
+  if (rtVar === 1) { if (!Array.isArray(day.ex2)) day.ex2 = []; return day.ex2; }
+  return day.ex;
+}
+$('rtCopy1').onclick = () => {
+  const day = S.routine[rtDay]; if (!day) return;
+  day.ex2 = day.ex.map(e => Object.assign({}, e));
+  OW.save(); renderRoutineEditor();
+  toast('1안 종목을 2안에 복사했습니다 — 여기서 바꿔 쓰세요', 'ok');
+};
 $('rtDone').onclick = closeRoutineEditor;
 $('mRoutine').onclick = e => { if (e.target === $('mRoutine')) closeRoutineEditor(); };
-$('rtAdd').onclick = () => openPicker({ type: 'routine', dayIdx: rtDay });
+$('rtAdd').onclick = () => openPicker({ type: 'routine', dayIdx: rtDay, variant: rtVar });
 function closeRoutineEditor() {
   $('mRoutine').classList.remove('on');
   syncTodayWithRoutine();
@@ -1122,11 +1147,12 @@ function syncTodayWithRoutine() {
   const byId = {}; L.ex.forEach(e => { byId[e.id] = e; });
   const hidden = new Set(L.hidden || []);
   const next = [];
-  day.ex.forEach(r => {
+  const plan = OW.dayVariant(day, L.variant);        // 오늘이 쓰는 안(1안/2안)만 본다
+  plan.forEach(r => {
     if (byId[r.id]) next.push(byId[r.id]);
     else if (!hidden.has(r.id)) next.push(newLogEx(r));
   });
-  const inRoutine = new Set(day.ex.map(r => r.id));
+  const inRoutine = new Set(plan.map(r => r.id));
   L.ex.forEach(e => {
     if (!inRoutine.has(e.id) && (e.adhoc || (e.sets || []).some(s => s.done))) next.push(e);
   });
@@ -1134,9 +1160,9 @@ function syncTodayWithRoutine() {
   OW.prefill(L); OW.save(true);
 }
 /** 꾹 눌러(약 0.4초) 위아래로 끌어 순서 바꾸기. 짧게 밀면 스크롤로 넘긴다. */
-function setupRoutineDrag(list, day) {
-  /* 렌더마다 불리지만 리스너는 한 번만 단다 — 대상 day만 갈아끼운다 */
-  list._dragDay = day;
+function setupRoutineDrag(list, plan) {
+  /* 렌더마다 불리지만 리스너는 한 번만 단다 — 대상 배열(1안/2안)만 갈아끼운다 */
+  list._dragList = plan;
   if (list._dragBound) return;
   list._dragBound = true;
   let pressT = null, dragging = false, srcEl = null, srcIdx = -1, startY = 0, startX = 0, pid = null;
@@ -1191,11 +1217,11 @@ function setupRoutineDrag(list, day) {
     dragging = false;
     srcEl.classList.remove('lifting'); srcEl.style.transform = '';
     try { list.releasePointerCapture(e.pointerId); } catch (x) {}
-    const d = list._dragDay;
+    const arr = list._dragList;
     const newIdx = Array.from(list.querySelectorAll('.ex')).indexOf(srcEl);
-    if (d && newIdx >= 0 && srcIdx >= 0 && newIdx !== srcIdx) {
-      const it = d.ex.splice(srcIdx, 1)[0];
-      d.ex.splice(newIdx, 0, it);
+    if (arr && newIdx >= 0 && srcIdx >= 0 && newIdx !== srcIdx) {
+      const it = arr.splice(srcIdx, 1)[0];
+      arr.splice(newIdx, 0, it);
       OW.save(); haptic(10);
     }
     srcEl = null;
@@ -1221,8 +1247,22 @@ function renderRoutineEditor() {
   const list = $('rtList'); list.innerHTML = '';
   if (rtDay >= S.routine.length || rtDay < 0) rtDay = 0;
   const day = S.routine[rtDay] || { label: '', ex: [] };
-  if (!day.ex.length) list.innerHTML = `<div class="empty"><p>종목이 없습니다</p></div>`;
-  day.ex.forEach((e, i) => {
+  /* 1안 / 2안 탭 — 같은 부위라도 분할 순서에 따라 종목이 다를 수 있다 */
+  const vt = $('rtVarTabs'); vt.innerHTML = '';
+  [0, 1].forEach(v => {
+    const b = document.createElement('button');
+    b.className = v === rtVar ? 'on' : '';
+    b.textContent = v === 0 ? '1안' : (OW.hasVariant2(day) ? '2안' : '2안 (비어 있음)');
+    b.onclick = () => { rtVar = v; renderRoutineEditor(); };
+    vt.appendChild(b);
+  });
+  $('rtCopy1').style.display = rtVar === 1 && !OW.hasVariant2(day) && day.ex.length ? 'inline-flex' : 'none';
+  $('rtVarHint').textContent = OW.hasVariant2(day)
+    ? `이 부위가 돌아올 때마다 1안 → 2안 → 1안… 번갈아 씁니다. 다음 차례: ${day.turn === 1 ? '2안' : '1안'}`
+    : '2안이 비어 있으면 항상 1안으로 운동합니다. 2안에 종목을 넣으면 번갈아 씁니다.';
+  const plan = rtPlan(day);
+  if (!plan.length) list.innerHTML = `<div class="empty"><p>종목이 없습니다</p></div>`;
+  plan.forEach((e, i) => {
     const div = document.createElement('div');
     div.className = 'ex swipe-del';
     const isTime = e.unit === 'min' || e.unit === 'sec';
@@ -1233,13 +1273,13 @@ function renderRoutineEditor() {
     </div></div>`;
     /* 삭제는 왼쪽으로 밀기 하나로 통일 — 되돌리기 제공 */
     swipeToDelete(div, () => {
-      const removed = day.ex.splice(i, 1)[0];
+      const removed = plan.splice(i, 1)[0];
       OW.save(); renderRoutineEditor(); haptic(16);
-      toastUndo(`${removed.nm} 삭제`, () => { day.ex.splice(Math.min(i, day.ex.length), 0, removed); OW.save(); renderRoutineEditor(); });
+      toastUndo(`${removed.nm} 삭제`, () => { plan.splice(Math.min(i, plan.length), 0, removed); OW.save(); renderRoutineEditor(); });
     });
     list.appendChild(div);
   });
-  setupRoutineDrag(list, day);
+  setupRoutineDrag(list, plan);
 }
 $('btnEditDays').onclick = async () => {
   obStep = 3; obFreq = S.freq; obSplit = S.split; obDows = (S.dows || []).slice();
