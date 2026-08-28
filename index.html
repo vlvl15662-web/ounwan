@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark" data-accent="lime">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<meta name="description" content="오늘 운동, 사진에 박아서 올리세요 — 웨이트 트레이닝 기록 + 오운완 인증샷 앱">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>오운완 — 오늘 운동, 사진에 박아서</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ══════════════════ 앱바 ══════════════════ -->
+<div class="appbar">
+  <h1 id="barTitle">오운완</h1>
+  <span class="sub-t" id="barSub"></span>
+</div>
+
+<main>
+
+<!-- ══════════════════ 1. 오늘 ══════════════════ -->
+<section class="page on" id="pg-today">
+
+  <div class="stats">
+    <div class="st"><b id="stTotal">0</b><span>총 운동일</span></div>
+    <div class="st"><b id="stStreak" class="hot">0</b><span>연속</span></div>
+    <div class="st"><b id="stWeek">0</b><span>이번 주</span></div>
+    <div class="st"><b id="stVol">0</b><span>이달 볼륨(t)</span></div>
+  </div>
+
+  <!-- 지난 날짜 기록 수정 중 -->
+  <div class="viewbanner" id="viewBanner" style="display:none;">
+    <span class="t" id="viewBannerTxt">—</span>
+    <label class="dur">운동 시간 <input type="number" inputmode="numeric" min="0" max="600" id="viewDur" placeholder="0"> 분</label>
+    <button class="btn ghost sm" id="btnViewToday">오늘로</button>
+  </div>
+
+  <!-- 진행 중 세션 타이머 -->
+  <div class="session" id="sessionBar" style="display:none;">
+    <span class="t" id="sessionTime">00:00</span>
+    <span class="l">운동 중 · 오늘 볼륨 <b id="sessionVol">0</b>kg</span>
+    <button class="btn ghost sm" id="btnEndSession">종료</button>
+  </div>
+
+  <div class="card">
+    <div class="today-head">
+      <div class="d">
+        <div class="dd" id="todayDate">—</div>
+        <div class="dl" id="todayLabel"></div>
+      </div>
+      <button class="btn ghost sm" id="btnSwapDay">부위 변경 ↻</button>
+    </div>
+
+    <div id="restDayBox" style="display:none;">
+      <div class="empty">
+        <div class="ic">☾</div>
+        <p>오늘은 휴식일입니다</p>
+        <small>회복도 운동의 일부입니다. 그래도 하고 싶으면 아래에서 부위를 고르세요.</small>
+      </div>
+      <button class="btn ghost block-sm" id="btnDoAnyway" style="margin-top:6px;">그래도 운동하기</button>
+    </div>
+
+    <div id="routineBox">
+      <div class="prog"><i id="progBar"></i></div>
+      <div class="prog-txt">
+        <span><b id="progDone">0</b> / <span id="progTotal">0</span> 종목</span>
+        <span id="progVol"></span>
+      </div>
+      <div class="exlist" id="exList" style="margin-top:12px;"></div>
+      <div class="row2" style="margin-top:12px;">
+        <button class="btn ghost block-sm" id="btnAddEx">＋ 종목 추가</button>
+        <button class="btn ghost block-sm" id="btnEditRoutine">루틴 편집</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" id="btnGoCam" style="margin-bottom:10px;">
+    <span>◉</span> 오운완 남기기
+  </button>
+
+  <div class="card tight" id="tipCard" style="display:none;">
+    <div class="sub" id="tipTxt"></div>
+  </div>
+</section>
+
+<!-- ══════════════════ 2. 캘린더 ══════════════════ -->
+<section class="page" id="pg-cal">
+  <div class="stats">
+    <div class="st"><b id="calMonthDays">0</b><span>이달 운동일</span></div>
+    <div class="st"><b id="calStreak" class="hot">0</b><span>연속</span></div>
+    <div class="st"><b id="calPhotos">0</b><span>이달 오운완</span></div>
+  </div>
+
+  <div class="card">
+    <div class="cal-head">
+      <button class="nav" id="calPrev" aria-label="이전 달">‹</button>
+      <b id="calTitle">—</b>
+      <button class="nav" id="calNext" aria-label="다음 달">›</button>
+      <button class="nav" id="calModeBtn" aria-label="캘린더 표시 방식">▦</button>
+    </div>
+    <div class="cal-grid" id="calGrid" role="grid" aria-label="월간 운동 기록"></div>
+    <div class="cal-legend">
+      <span><i style="background:var(--ac);"></i>오운완</span>
+      <span><i style="background:var(--ac-dim); border:1px solid var(--ac);"></i>운동만</span>
+      <span><i style="background:#222; border:1px solid #2E2E2E;"></i>쉼</span>
+    </div>
+  </div>
+
+  <div class="card" id="calEmptyCard" style="display:none;">
+    <div class="empty">
+      <p>여기, 오늘 사진이 들어갑니다</p>
+      <small>오운완을 남기면 이 달력이 사진으로 채워집니다.</small>
+    </div>
+    <button class="btn block-sm" id="btnCalGoCam">오늘 오운완 남기기</button>
+  </div>
+</section>
+
+<!-- ══════════════════ 3. 오운완 카메라 ══════════════════ -->
+<section class="page" id="pg-cam">
+
+  <div id="camStage">
+    <video id="vid" autoplay playsinline muted></video>
+    <canvas id="previewCanvas" style="display:none;"></canvas>
+    <div class="placeholder" id="camPlaceholder">
+      <div class="big">◉</div>
+      <p><b>오늘 운동을 사진에 박습니다.</b><br>
+      카메라로 찍거나, 이미 찍어둔 거울샷을 불러오세요.</p>
+    </div>
+    <div class="gridlines" id="gridLines">
+      <i style="left:33.3%; top:0; bottom:0; width:1px;"></i>
+      <i style="left:66.6%; top:0; bottom:0; width:1px;"></i>
+      <i style="top:33.3%; left:0; right:0; height:1px;"></i>
+      <i style="top:66.6%; left:0; right:0; height:1px;"></i>
+    </div>
+    <div class="shutterflash" id="shutterFlash"></div>
+    <div class="busy" id="camBusy">합성 중…</div>
+  </div>
+
+  <!-- 촬영 전 -->
+  <div id="camCapture">
+    <div class="camctl">
+      <button class="side" id="btnPick" aria-label="앨범에서 선택">▤</button>
+      <button class="shutter" id="btnShutter" aria-label="촬영"></button>
+      <button class="side" id="btnFlip" aria-label="카메라 전환">⟳</button>
+    </div>
+    <button class="btn ghost block-sm" id="btnPick2" style="margin-top:10px;">앨범에서 선택</button>
+    <div class="hint">
+      후방 카메라가 자동으로 켜집니다. 안 켜지면 카메라 권한을 확인하거나 <b>앨범에서 선택</b>으로 진행하세요.
+      사진은 서버로 전송되지 않고 <b>이 기기에만</b> 저장됩니다.
+    </div>
+  </div>
+
+  <!-- 촬영 후 편집 -->
+  <div id="camEdit" style="display:none;">
+
+    <div class="seg-lbl">정보량 — 사진에 얼마나 자세히 박을까요</div>
+    <div class="seg" id="segLevel">
+      <button data-lv="full" class="sel">상세<small>종목+무게+볼륨</small></button>
+      <button data-lv="simple">간단<small>종목명만</small></button>
+      <button data-lv="mini">오운완만<small>날짜+D+n</small></button>
+    </div>
+
+    <div class="seg-lbl">템플릿</div>
+    <div class="tmpl-preview" id="segTmpl">
+      <button data-t="A" class="sel"><span class="mini">
+        <i style="left:8%; right:8%; bottom:10%; height:26%; background:var(--sub2); border-radius:3px;"></i>
+      </span><em>A 하단바</em></button>
+      <button data-t="B"><span class="mini">
+        <i style="left:10%; top:16%; width:52%; height:8%;"></i>
+        <i style="left:10%; top:32%; width:40%; height:4%;"></i>
+        <i style="left:10%; top:42%; width:44%; height:4%;"></i>
+        <i style="left:10%; top:52%; width:36%; height:4%;"></i>
+      </span><em>B 사이드</em></button>
+      <button data-t="C"><span class="mini">
+        <i style="right:8%; bottom:10%; width:46%; height:20%; background:transparent; border:1.5px solid var(--sub2); border-radius:3px;"></i>
+      </span><em>C 스탬프</em></button>
+      <button data-t="D"><span class="mini">
+        <i style="left:8%; right:8%; top:8%; height:12%; background:var(--sub2); border-radius:2px;"></i>
+        <i style="left:8%; right:8%; bottom:8%; height:12%; background:var(--sub2); border-radius:2px;"></i>
+      </span><em>D 필름</em></button>
+    </div>
+
+    <div class="seg-lbl">비율</div>
+    <div class="seg" id="segRatio">
+      <button data-r="orig" class="sel">원본</button>
+      <button data-r="1:1">1:1<small>피드</small></button>
+      <button data-r="4:5">4:5<small>피드 권장</small></button>
+      <button data-r="9:16">9:16<small>스토리</small></button>
+    </div>
+
+    <div class="seg-lbl">색상</div>
+    <div class="seg" id="segTone">
+      <button data-tone="dark" class="sel">다크</button>
+      <button data-tone="light">라이트</button>
+      <button data-tone="accent">포인트</button>
+      <button data-tone="custom" id="btnToneCustom"><i class="swatch" id="toneSwatch"></i>커스텀</button>
+      <input type="color" id="toneColor" value="#1E3A8A" style="position:absolute; opacity:0; width:1px; height:1px; pointer-events:none;">
+    </div>
+
+    <div class="seg-lbl">출력 방식</div>
+    <div class="seg" id="segOut">
+      <button data-out="photo" class="sel">사진에 합성<small>바로 올리기</small></button>
+      <button data-out="sticker">투명 스티커<small>PNG · 스토리에 직접 배치</small></button>
+    </div>
+
+    <div class="seg-lbl">표시 항목 <span style="font-weight:600; color:var(--sub2);">— 끄고 켤 수 있습니다</span></div>
+    <div class="chips" id="chipFields"></div>
+
+    <div class="hint" style="margin-top:12px;">글자를 <b>끌어</b> 옮기고, <b>두 손가락</b>으로 크기를 바꾸고, 글자 <b>바깥을 끌면</b> 사진이 움직입니다.</div>
+
+    <div class="perf" id="perfTxt"></div>
+
+    <div class="row2" style="margin-top:12px;">
+      <button class="btn" id="btnShare">공유하기</button>
+      <button class="btn ghost" id="btnSave">저장</button>
+    </div>
+    <button class="btn ghost block-sm" id="btnDual" style="margin-top:8px;">
+      카톡용 1:1 + 스토리 9:16 둘 다 저장
+    </button>
+    <div class="row2" style="margin-top:8px;">
+      <button class="btn ghost block-sm" id="btnTags">해시태그 편집·복사</button>
+      <button class="btn ghost block-sm" id="btnRetake">다시 찍기</button>
+    </div>
+    <div class="hint" id="camEditHint"></div>
+  </div>
+
+  <input type="file" id="filePick" accept="image/*" style="display:none;">
+</section>
+
+<!-- ══════════════════ 4. 통계 ══════════════════ -->
+<section class="page" id="pg-stat">
+  <div class="card">
+    <h2>주간 볼륨 <span class="tag" id="volTrend"></span></h2>
+    <div class="bars" id="volBars"></div>
+    <div class="sub" style="margin-top:10px;" id="volSummary"></div>
+  </div>
+
+  <div class="card">
+    <h2>부위별 볼륨 <span class="tag" id="partRange">최근 4주</span></h2>
+    <div class="partlist" id="partList"></div>
+    <div class="hint" id="partAdvice"></div>
+  </div>
+
+  <div class="card">
+    <h2>운동 잔디</h2>
+    <div class="heat" id="heatGrid"></div>
+    <div class="sub" style="margin-top:10px;" id="heatSummary"></div>
+  </div>
+
+  <div class="card">
+    <h2>개인 기록 (PR)</h2>
+    <div class="prlist" id="prList"></div>
+    <div class="hint">1RM 추정은 Epley 공식(무게 × (1 + 횟수/30)) 기준입니다. 실제 1RM 측정값이 아닙니다.</div>
+  </div>
+</section>
+
+<!-- ══════════════════ 5. 설정 ══════════════════ -->
+<section class="page" id="pg-set">
+  <div class="card">
+    <h2>내 루틴</h2>
+    <div class="sub" id="setSplitInfo"></div>
+    <div class="row2" style="margin-top:12px;">
+      <button class="btn ghost block-sm" id="btnReOnboard">분할 다시 설정</button>
+      <button class="btn ghost block-sm" id="btnEditDays">운동 요일</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>오운완 기본값</h2>
+    <button class="setrow-l" id="setDefLevel">
+      <span class="k">기본 정보량<small>카메라를 열 때 처음 선택될 값</small></span>
+      <span class="v" id="setDefLevelV">상세 <span class="arr">›</span></span>
+    </button>
+    <div class="divider"></div>
+    <button type="button" class="sw" id="swLogo" role="switch" aria-checked="false">
+      <span class="lbl">사진에 앱 로고 표시<small>D-5 결정 항목 — 끌 수 있게 되어 있습니다</small></span>
+      <span class="knob"></span>
+    </button>
+    <div class="divider"></div>
+    <button type="button" class="sw" id="swGrid" role="switch" aria-checked="false">
+      <span class="lbl">촬영 격자선<small>3분할 구도 가이드</small></span>
+      <span class="knob"></span>
+    </button>
+    <div class="divider"></div>
+    <button type="button" class="sw" id="swMirror" role="switch" aria-checked="false">
+      <span class="lbl">셀피 좌우 반전<small>거울처럼 보이게 저장</small></span>
+      <span class="knob"></span>
+    </button>
+  </div>
+
+  <div class="card">
+    <h2>화면</h2>
+    <div class="sub" style="margin-bottom:10px;">포인트 컬러 — 디자인 명세표 §7 미확정 항목입니다. 실물로 보고 고르세요.</div>
+    <div class="swatches" id="swatches">
+      <button data-a="lime"   style="background:#C8FF4D;">라임</button>
+      <button data-a="orange" style="background:#FF7A2F;">오렌지</button>
+      <button data-a="blue"   style="background:#4DA3FF;">블루</button>
+      <button data-a="mono"   style="background:#E5E5E5;">모노</button>
+    </div>
+    <div class="divider"></div>
+    <button type="button" class="sw" id="swTheme" role="switch" aria-checked="false">
+      <span class="lbl">라이트 모드<small>기본은 다크 (헬스장 조명 기준)</small></span>
+      <span class="knob"></span>
+    </button>
+  </div>
+
+  <div class="card">
+    <h2>운동</h2>
+    <button class="setrow-l" id="setRest">
+      <span class="k">기본 휴식 시간<small>세트 완료 시 자동 시작</small></span>
+      <span class="v" id="setRestV">90초 <span class="arr">›</span></span>
+    </button>
+    <div class="divider"></div>
+    <button type="button" class="sw" id="swRestAuto" role="switch" aria-checked="false">
+      <span class="lbl">휴식 타이머 자동 시작<small>세트 체크하면 바로 카운트</small></span>
+      <span class="knob"></span>
+    </button>
+    <div class="divider"></div>
+    <button type="button" class="sw" id="swSound" role="switch" aria-checked="false">
+      <span class="lbl">휴식 종료 알림음<small>진동도 함께 (지원 기기)</small></span>
+      <span class="knob"></span>
+    </button>
+    <div class="divider"></div>
+    <button class="setrow-l" id="setUnit">
+      <span class="k">무게 단위</span>
+      <span class="v" id="setUnitV">kg <span class="arr">›</span></span>
+    </button>
+  </div>
+
+  <div class="card">
+    <h2>데이터 <span class="tag" id="storageTag"></span></h2>
+    <p class="sub" style="margin-top:0;">
+      기록과 사진은 <b>이 기기(브라우저)에만</b> 저장됩니다. 서버로 전송되지 않습니다.
+      기기를 바꾸거나 브라우저 데이터를 지우면 사라지므로, 주기적으로 백업하세요.
+    </p>
+    <div class="storagebar"><i id="storageBar"></i></div>
+    <div class="sub" id="storageTxt" style="font-size:11.5px;"></div>
+    <div class="row2" style="margin-top:12px;">
+      <button class="btn ghost block-sm" id="btnBackup">백업 파일 저장</button>
+      <button class="btn ghost block-sm" id="btnRestore">백업 불러오기</button>
+    </div>
+    <button class="btn ghost block-sm" id="btnPurgePhotos" style="margin-top:8px;">오래된 사진 정리</button>
+    <button class="btn danger block-sm" id="btnWipe" style="margin-top:8px;">기록 전체 삭제</button>
+    <input type="file" id="restoreFile" accept="application/json,.json" style="display:none;">
+  </div>
+
+  <div class="card">
+    <h2>정보</h2>
+    <div class="sub">
+      오운완 v1.0.5 · 로컬 저장 전용<br>
+      근거 문서: PRD v1.0 / DEC-001~005 / CR-2026-08-25 / 디자인 수치명세표 v1.0
+    </div>
+    <div class="divider"></div>
+    <button class="setrow-l" id="btnSpecCheck">
+      <span class="k">사양 자가진단<small>명세표 준수 여부 · 대비비 실측</small></span>
+      <span class="v"><span class="arr">›</span></span>
+    </button>
+  </div>
+</section>
+
+</main>
+
+<!-- ══════════════════ 하단 네비 ══════════════════ -->
+<nav>
+  <button class="tab on" data-pg="today">
+    <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>오늘
+  </button>
+  <button class="tab" data-pg="cal">
+    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>캘린더
+  </button>
+  <span class="fabwrap">
+    <button class="fab" id="fabCam" aria-label="오운완 찍기">
+      <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 015.5 6h1.7l1.3-2h7l1.3 2h1.7A2.5 2.5 0 0121 8.5v9A2.5 2.5 0 0118.5 20h-13A2.5 2.5 0 013 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg>
+    </button>
+  </span>
+  <button class="tab" data-pg="stat">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>통계
+  </button>
+  <button class="tab" data-pg="set">
+    <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>설정
+  </button>
+</nav>
+
+<!-- 휴식 타이머 바 -->
+<div id="restBar">
+  <span class="rt" id="restTime">1:30</span>
+  <span class="rl">휴식 중 · <span id="restNext"></span></span>
+  <button id="restPlus">+10초</button>
+  <button id="restSkip">건너뛰기</button>
+  <span class="bar"><i id="restProg"></i></span>
+</div>
+
+<!-- 타이머 원형 버튼 (오늘 화면 우하단) — 입력 중에는 바 대신 이것만 남는다 -->
+<button id="timerFab" aria-label="휴식 타이머 열기">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 3h6"/></svg>
+  <span id="timerFabTxt"></span>
+</button>
+
+<!-- 타이머 상세 — 하단 가로 오버레이 -->
+<div id="timerPanel">
+  <div class="tp-in">
+    <div class="tp-main">
+      <button class="tp-step" id="tpMinus" aria-label="10초 줄이기">−10</button>
+      <div class="tp-time" id="tpTime">1:30</div>
+      <button class="tp-step" id="tpPlus" aria-label="10초 늘리기">+10</button>
+      <button class="tp-go" id="tpStart">시작</button>
+      <button class="tp-reset" id="tpSkip" aria-label="타이머 초기화">초기화</button>
+    </div>
+    <div class="tp-sub">
+      <span class="tp-presets" id="tpPresets"></span>
+      <button class="tp-def" id="tpDefault">기본값으로 저장</button>
+      <button class="tp-close" id="tpClose" aria-label="타이머 창 닫기">✕</button>
+    </div>
+    <span class="bar"><i id="tpProg"></i></span>
+  </div>
+</div>
+
+<!-- ══════════════════ 온보딩 ══════════════════ -->
+<div class="modal" role="dialog" aria-modal="true" id="mOnboard">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3 id="obTitle">주에 몇 번 운동하실 계획인가요?</h3>
+    <p class="sh-sub" id="obSub">1/3 단계 · 나중에 언제든 바꿀 수 있습니다.</p>
+    <div id="obStep1"></div>
+    <div id="obStep2" style="display:none;"></div>
+    <div id="obStep3" style="display:none;">
+      <p class="sub" style="margin-bottom:10px;">운동할 요일을 고르세요. 나머지는 휴식일이 됩니다.</p>
+      <div class="chips" id="obDows" style="margin-bottom:14px;"></div>
+      <div class="hint" id="obSummary"></div>
+    </div>
+    <div class="row2" style="margin-top:16px;">
+      <button class="btn ghost" id="obBack" style="display:none;">이전</button>
+      <button class="btn" id="obNext" disabled>다음</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 날짜 상세 시트 ══════════════════ -->
+<div class="modal" role="dialog" aria-modal="true" id="mDay">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3 id="ddTitle">—</h3>
+    <p class="sh-sub" id="ddSub"></p>
+    <div class="dd-photo" id="ddPhotoWrap" style="display:none;">
+      <img id="ddImg" alt="오운완 사진">
+      <div class="dd-nav" id="ddNav" style="display:none;">
+        <button id="ddPrev">‹</button><button id="ddNext">›</button>
+      </div>
+    </div>
+    <div class="dd-dots" id="ddDots"></div>
+    <div class="dd-rows" id="ddRows"></div>
+    <div class="dd-ex" id="ddEx"></div>
+    <div class="row2" style="margin-top:16px;" id="ddEditRow">
+      <button class="btn block-sm" id="ddEdit">기록 수정</button>
+      <button class="btn ghost block-sm" id="ddPhoto">사진 남기기</button>
+    </div>
+    <div class="row2" style="margin-top:8px;">
+      <button class="btn ghost block-sm" id="ddSave">사진 저장</button>
+      <button class="btn ghost block-sm" id="ddDelete">기록 삭제</button>
+    </div>
+    <button class="btn block-sm" id="ddClose" style="margin-top:8px;">닫기</button>
+  </div>
+</div>
+
+<!-- ══════════════════ 종목 추가 ══════════════════ -->
+<div class="modal" role="dialog" aria-modal="true" id="mPicker">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>종목 추가</h3>
+    <p class="sh-sub" id="pkSub">한글·영문·줄임말(사레레 등)로 검색됩니다.</p>
+    <div class="search">
+      <span class="ic">⌕</span>
+      <input type="text" id="pkSearch" placeholder="종목 검색 (예: 벤치, 사레레, squat)" autocomplete="off">
+    </div>
+    <div class="partfilter" id="pkParts"></div>
+    <div class="exresults" id="pkResults"></div>
+    <div class="row2" style="margin-top:14px;">
+      <button class="btn ghost" id="pkCancel">취소</button>
+      <button class="btn" id="pkDone">추가 <span id="pkCount"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 루틴 편집 ══════════════════ -->
+<div class="modal" role="dialog" aria-modal="true" id="mRoutine">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>루틴 편집</h3>
+    <p class="sh-sub" id="rtSub"></p>
+    <div class="chips" id="rtDayTabs" style="margin-bottom:14px;"></div>
+    <div class="exlist" id="rtList"></div>
+    <button class="btn ghost block-sm" id="rtAdd" style="margin-top:12px;">＋ 이 부위에 종목 추가</button>
+    <div class="hint">순서는 <b>꾹 눌러서 위아래로</b> 옮기고, <b>왼쪽으로 밀면 삭제</b>됩니다. 바꾼 내용은 오늘 목록에도 바로 반영되며, 이미 체크한 세트는 유지됩니다.</div>
+    <button class="btn" id="rtDone" style="margin-top:14px;">완료</button>
+  </div>
+</div>
+
+<!-- ══════════════════ 범용 선택 시트 ══════════════════ -->
+<div class="modal" role="dialog" aria-modal="true" id="mChoice">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3 id="chTitle">—</h3>
+    <p class="sh-sub" id="chSub"></p>
+    <div id="chOpts"></div>
+    <button class="btn ghost" id="chCancel" style="margin-top:8px;">취소</button>
+  </div>
+</div>
+
+<!-- ══════════════════ 범용 확인 다이얼로그 ══════════════════ -->
+<div class="modal center" role="dialog" aria-modal="true" id="mConfirm">
+  <div class="sheet">
+    <h3 id="cfTitle">—</h3>
+    <p class="sh-sub" id="cfSub" style="margin-bottom:18px;"></p>
+    <div class="row2">
+      <button class="btn ghost" id="cfNo">취소</button>
+      <button class="btn" id="cfYes">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 해시태그 편집 ══════════════════ -->
+<div class="modal" role="dialog" aria-modal="true" id="mTags">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>해시태그 편집</h3>
+    <p class="sh-sub">고친 내용은 저장하면 다음부터 기본값으로 쓰입니다. 공유할 때도 이 내용이 들어갑니다.</p>
+    <textarea id="tagEdit" class="tagedit" rows="4" placeholder="#오운완 #헬스타그램 …"></textarea>
+    <div class="row3" style="margin-top:12px;">
+      <button class="btn ghost block-sm" id="tagReset">기본값으로</button>
+      <button class="btn ghost block-sm" id="tagSave">저장</button>
+      <button class="btn block-sm" id="tagCopy">저장 + 복사</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 숫자 조절 시트 (휴식 시간 등) ══════════════════ -->
+<div class="modal center" role="dialog" aria-modal="true" id="mStep">
+  <div class="sheet">
+    <h3 id="stTitle">—</h3>
+    <p class="sh-sub" id="stSub"></p>
+    <div class="stepper">
+      <button id="stMinus" aria-label="줄이기">−</button>
+      <b id="stVal">90</b>
+      <button id="stPlus" aria-label="늘리기">＋</button>
+    </div>
+    <div class="row2" style="margin-top:16px;">
+      <button class="btn ghost" id="stCancel">취소</button>
+      <button class="btn" id="stOk">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ 축하 ══════════════════ -->
+<div id="celebrate" role="dialog" aria-modal="true" aria-labelledby="cbTitle">
+  <div class="in">
+    <div class="mark">✓</div>
+    <h2 id="cbTitle">오늘 운동 완료</h2>
+    <p id="cbSub">이제 사진 한 장이면 끝납니다.</p>
+    <div class="sum" id="cbSum"></div>
+    <button class="btn" id="cbGoCam">오운완 남기기 ◉</button>
+    <button class="btn ghost block-sm" id="cbLater" style="margin-top:8px;">나중에</button>
+  </div>
+</div>
+<canvas class="confetti" id="confetti" style="display:none;"></canvas>
+
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script src="native.js"></script>
+<script src="data.js"></script>
+<script src="store.js"></script>
+<script src="overlay.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
