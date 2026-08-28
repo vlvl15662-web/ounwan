@@ -72,7 +72,8 @@
 
 /* ---------- 2. 리셋 ---------- */
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-html,body{height:100%;}
+html{height:100%;}
+body{min-height:100%;}   /* height:100%면 내용이 넘칠 때 하단 padding이 화면 높이 자리에 붙어 마지막 버튼이 네비에 가린다 */
 body{
   margin:0;
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif;

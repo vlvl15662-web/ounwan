@@ -1050,11 +1050,17 @@ function renderPk() {
       b.className = 'btn ghost block-sm';
       const clean = cleanExName(q);
       b.textContent = `"${clean}" 직접 추가`;
-      b.onclick = () => {
+      b.onclick = async () => {
         if (!clean) return toast('종목 이름을 확인해 주세요', 'bad');
+        /* 부위를 물어본다 — 전부 '전신'으로 들어가면 통계의 부위별 볼륨이 틀어진다.
+           검색창에서 부위 필터를 골라뒀으면 그게 기본 선택 */
+        const part = await choiceBox(`"${clean}" 부위 선택`, '통계 · 휴식시간 기본값에 쓰입니다.',
+          D.PARTS.map(p => ({ v: p, t: p })), pkPart || '전신');
+        if (!part) return;
+        const isCardio = part === '유산소';
         /* id를 Date.now()로 발급하면 같은 종목을 다시 추가할 때마다 다른 종목이 된다.
            → 지난 무게 프리필도, PR 누적도 영원히 동작하지 않는다. 이름으로 고정한다. */
-        pkPicked.push({ id: customId(clean), nm: clean, part: '전신', sets: 3, reps: 10, unit: 'kg' });
+        pkPicked.push({ id: customId(clean), nm: clean, part, sets: isCardio ? 1 : 3, reps: isCardio ? 30 : 10, unit: isCardio ? 'min' : 'kg' });
         commitPicker();
       };
       box.appendChild(b);
