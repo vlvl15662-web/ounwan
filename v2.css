@@ -1,0 +1,166 @@
+/* ══════════════════════════════════════════════════════════════
+   v2 실험 빌드(득근샷) — 시안 명세로 새로 들어간 컴포넌트만.
+   ──────────────────────────────────────────────────────────────
+   근거 : 화면456_공통레이아웃_코랄_v1.0 / 부위배지규격_v1.0
+   원칙 : 색·라운드는 전부 테마 토큰(var(--*)) 참조. 하드코딩 금지.
+          레이아웃/간격/터치 영역은 기존 스케일을 그대로 따른다.
+   순서 : styles.css → themes.css → v2.css (테마 토큰 위에서 조판만 얹는다)
+   ══════════════════════════════════════════════════════════════ */
+
+
+/* ───────── 화면4 · 루틴 카드 ───────── */
+.rtlist{display:flex; flex-direction:column; gap:10px;}
+.rtcard{
+  display:block; width:100%; text-align:left;
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  padding:15px 16px; min-height:var(--tap);
+}
+.rtcard.on{border-color:var(--ac);}
+.rt-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.rt-top b{font-size:16px; font-weight:800; letter-spacing:-.3px; color:var(--txt);}
+.rt-play{
+  width:34px; height:34px; min-width:34px; border-radius:50%;
+  background:var(--ac); color:var(--ac-txt);
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; line-height:1;
+}
+.rt-chips{display:flex; flex-wrap:wrap; gap:5px; margin:9px 0 7px;}
+.rt-chips i{
+  font-style:normal; font-size:11px; font-weight:700;
+  color:var(--ac); background:var(--ac-dim);
+  padding:3px 9px; border-radius:20px;
+}
+.rt-meta{font-size:12px; color:var(--sub); font-weight:600;}
+
+
+/* ───────── 화면5 · 부위별 운동 횟수 (볼륨 아님 · '회') ───────── */
+.partbars{display:flex; flex-direction:column; gap:9px;}
+.pb{display:flex; align-items:center; gap:10px;}
+.pb-n{
+  width:44px; min-width:44px; font-size:12.5px; font-weight:700; color:var(--txt2);
+}
+.pb-bar{
+  flex:1; height:10px; background:var(--card2); border-radius:6px; overflow:hidden;
+}
+.pb-bar i{display:block; height:100%; background:var(--ac); border-radius:6px;}
+.pb-v{
+  width:34px; min-width:34px; text-align:right;
+  font-size:12px; font-weight:800; color:var(--sub);
+  font-variant-numeric:tabular-nums;
+}
+
+
+/* ───────── 테마 선택 시트 ─────────
+   미리보기 썸네일은 3테마를 동시에 보여줘야 해서 실제 토큰 색을 인라인으로 찍는다.
+   (화면456 명세 §하드코딩 인정 예외 ① — 테마 선택 UI) */
+.themepick{
+  display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+  margin-bottom:6px;
+}
+.tcard{
+  display:flex; flex-direction:column; align-items:flex-start; gap:7px;
+  padding:10px; border-radius:var(--r-sm, 12px);
+  background:var(--card2); border:2px solid transparent; min-height:var(--tap);
+}
+.tcard.sel{border-color:var(--ac);}
+.tcard b{font-size:13.5px; font-weight:800; color:var(--txt);}
+.tcard small{font-size:11px; color:var(--sub); font-weight:600; margin-top:-4px;}
+.tmini{
+  width:100%; height:62px; border-radius:9px; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:flex-end; gap:4px;
+  padding:8px; position:relative;
+}
+.tmini i{display:block; height:8px; border-radius:3px; width:100%;}
+.tmini i:last-of-type{width:62%;}
+.tmini em{
+  position:absolute; right:8px; top:8px;
+  width:16px; height:16px; border-radius:50%;
+}
+
+
+/* ───────── 스트릭 끊김 시트 ─────────
+   시트 안에 카드를 겹쳐 쓰므로 여백만 눌러 준다. */
+#mBreak .sheet .card{margin-bottom:12px;}
+#mBreak .sheet .card:last-of-type{margin-bottom:14px;}
+#mBreak h3{font-size:18px; line-height:1.4; word-break:keep-all;}
+
+
+/* ───────── 피드 (데모) ─────────
+   서버 없는 예시 화면. 색은 전부 테마 토큰을 따라간다. */
+.demobar{
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  background:var(--ac-dim); border:1.5px solid var(--ac);
+  border-radius:var(--r-sm, 10px); padding:9px 12px; margin-bottom:12px;
+}
+.demobar b{
+  font-size:10.5px; font-weight:900; letter-spacing:1px; color:var(--ac);
+  border:1.5px solid var(--ac); border-radius:20px; padding:1px 8px;
+}
+.demobar span{font-size:11.5px; color:var(--sub); font-weight:600; line-height:1.5; flex:1; min-width:180px;}
+
+.feed{display:flex; flex-direction:column; gap:14px;}
+.fcard{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+  overflow:hidden; display:block;
+}
+.fhead{display:flex; align-items:center; gap:9px; padding:11px 13px;}
+.fav{width:32px; height:32px; min-width:32px; border-radius:50%; display:block;}
+.fwho{display:flex; flex-direction:column; line-height:1.3;}
+.fwho b{font-size:13.5px; font-weight:800;}
+.fwho small{font-size:11px; color:var(--sub); font-weight:600;}
+
+.fphoto{position:relative; width:100%; aspect-ratio:4/5; background:var(--card2); overflow:hidden;}
+.fphoto img{width:100%; height:100%; object-fit:cover; display:block;}
+.fbadge{
+  position:absolute; left:10px; bottom:10px; display:flex; gap:5px; align-items:center;
+  font-size:11.5px; font-weight:900; color:var(--ac-txt);
+  background:var(--ac); padding:5px 11px; border-radius:20px;
+}
+.fbadge i{
+  font-style:normal; font-weight:800; color:#FFFFFF;
+  background:rgba(255,255,255,.22); padding:3px 8px; border-radius:20px; margin-left:2px;
+}
+
+.fact{display:flex; align-items:center; gap:6px; padding:9px 11px 3px;}
+.fbtn{
+  font-size:12.5px; font-weight:700; color:var(--sub);
+  padding:7px 10px; border-radius:var(--r-sm, 10px); min-height:38px;
+}
+.fbtn.on{color:var(--ac);}
+.fbtn.right{margin-left:auto; border:1px solid var(--line);}
+.fbtn.right.on{border-color:var(--ac);}
+
+.fbody{padding:2px 13px 14px;}
+.fcap{font-size:13px; line-height:1.6; color:var(--txt2); margin:0 0 11px;}
+.fcap b{color:var(--txt); font-weight:800; margin-right:4px;}
+
+.frt{background:var(--card2); border:1px solid var(--line); border-radius:var(--r-sm, 10px); padding:11px 12px;}
+.frt-h{display:flex; align-items:baseline; gap:8px; margin-bottom:8px;}
+.frt-h b{font-size:13px; font-weight:800;}
+.frt-h span{font-size:11px; color:var(--sub); font-weight:600;}
+.frt-l{list-style:none; margin:0 0 10px; padding:0; display:flex; flex-direction:column; gap:4px;}
+.frt-l li{display:flex; font-size:12.5px; font-weight:600; color:var(--txt2);}
+.frt-l li span{margin-left:auto; color:var(--sub); font-weight:800; font-variant-numeric:tabular-nums;}
+
+.fcmts{margin-top:11px; display:flex; flex-direction:column; gap:5px;}
+.fcmts p{margin:0; font-size:12.5px; line-height:1.55; color:var(--sub);}
+.fcmts p b{color:var(--txt2); font-weight:700; margin-right:4px;}
+
+
+/* ───────── 다음 원판까지 (하드 테마 전용) ─────────
+   구조·간격만 여기서 정의한다. 보이게 하는 규칙과 색은 themes2.css에 있다.
+   기본값이 display:none이라 다른 테마에는 존재 자체가 드러나지 않는다. */
+.platebar{display:none; margin:-4px 0 12px;}
+.pl-t{
+  display:flex; align-items:baseline; justify-content:space-between;
+  font-size:10.5px; font-weight:800; letter-spacing:2px;
+  text-transform:uppercase; color:var(--sub); margin-bottom:5px;
+}
+.pl-t b{font-size:13px; letter-spacing:.5px; color:var(--txt2);}
+.pl-bar{height:12px; background:#07090A; border:2px solid var(--line);}
+.pl-bar i{
+  display:block; height:100%; width:0;
+  background:repeating-linear-gradient(90deg,#A8402C 0 10px,#7A2E20 10px 13px);
+  transition:width .3s ease-out;
+}
+.pl-s{font-size:11px; font-weight:700; color:var(--sub); margin-top:5px;}

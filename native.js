@@ -79,6 +79,11 @@ var NATIVE = (() => {
   function exitApp() {
     try { plug('App').exitApp(); } catch (e) { console.warn('[native] exitApp 실패', e); }
   }
+  /** 이 앱의 시스템 설정 화면(권한 페이지). 카메라 권한을 '다시 묻지 않음'으로 거부한 뒤의 유일한 복구 경로 */
+  function openSettings() {
+    try { plug('Gallery').openSettings().catch(e => console.warn('[native] openSettings', e)); }
+    catch (e) { console.warn('[native] openSettings', e); }
+  }
 
   /** 휴식 타이머를 상단 알림에 띄운다(백그라운드에서도 카운트다운 + 종료 알림).
       running=false면 알림을 내린다. 실패해도 앱 동작에는 영향 없다. */
@@ -91,6 +96,6 @@ var NATIVE = (() => {
 
   return {
     get on() { return on(); },
-    saveImage, saveFile, shareImage, ensureCamPermission, onBackButton, exitApp, restTimer,
+    saveImage, saveFile, shareImage, ensureCamPermission, onBackButton, exitApp, openSettings, restTimer,
   };
 })();

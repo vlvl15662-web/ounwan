@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark" data-accent="lime">
+<html lang="ko" data-theme="dark" data-accent="lime" data-design="base">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#141414">
+<!-- CSP: 외부 통신 0건인 앱이므로 self만 연다. 스크립트에 'unsafe-inline'이 남은 이유 — Capacitor가 네이티브 브리지를
+     인라인 <script>로 주입한다(JSInjector). 빼면 앱이 켜지지 않는다. 그래도 connect/img/font가 self로 잠겨 유출 경로는 막힌다. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="description" content="오늘 운동, 사진에 박아서 올리세요 — 웨이트 트레이닝 기록 + 오운완 인증샷 앱">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,12 +16,19 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="styles.css">
+<!-- themes.css(코랄·라임·라벤더)는 목록에서 뺀 뒤 죽은 파일이라 링크를 내렸다(2026-09-05). 파일은 남아 있다.
+     되살리기: 여기 <link rel="stylesheet" href="themes.css"> 한 줄 + app.js THEME_LIST 세 줄 + sw.js ASSETS. -->
+<!-- 테마 2종(인스타·하드) + 원판 성장.
+     되돌리기: 이 한 줄만 지우면 인스타·하드가 사라지고 나머지는 그대로다. -->
+<link rel="stylesheet" href="themes2.css">
+<!-- v2 신규 컴포넌트 (루틴 카드·부위 바·테마 시트). 테마 토큰 위에 조판만 얹는다. -->
+<link rel="stylesheet" href="v2.css">
 </head>
 <body>
 
 <!-- ══════════════════ 앱바 ══════════════════ -->
 <div class="appbar">
-  <h1 id="barTitle">오운완</h1>
+  <h1 id="barTitle">홈</h1>
   <span class="sub-t" id="barSub"></span>
 </div>
 
@@ -32,6 +42,14 @@
     <div class="st"><b id="stStreak" class="hot">0</b><span>연속</span></div>
     <div class="st"><b id="stWeek">0</b><span>이번 주</span></div>
     <div class="st"><b id="stVol">0</b><span>이달 볼륨(t)</span></div>
+  </div>
+
+  <!-- 다음 원판까지 — 하드 테마 전용. 기본값은 display:none(v2.css)이고
+       :root[data-design="hard"]에서만 보인다(themes2.css). -->
+  <div class="platebar" id="plateBar">
+    <div class="pl-t"><span id="plateCap">NEXT PLATE</span><b id="plateNextLb">10 LB</b></div>
+    <div class="pl-bar"><i id="plateFill"></i></div>
+    <div class="pl-s" id="plateSub">—</div>
   </div>
 
   <!-- 지난 날짜 기록 수정 중 -->
@@ -73,9 +91,10 @@
         <span id="progVol"></span>
       </div>
       <div class="exlist" id="exList" style="margin-top:12px;"></div>
+      <!-- 루틴 수정은 루틴 탭(카드 → 루틴 수정)으로 옮겼다(2026-09-05). 2안 버튼은 그 부위에 2안이 있을 때만 보인다 -->
       <div class="row2" style="margin-top:12px;">
         <button class="btn ghost block-sm" id="btnAddEx">＋ 종목 추가</button>
-        <button class="btn ghost block-sm" id="btnEditRoutine">루틴 편집</button>
+        <button class="btn ghost block-sm" id="btnSwapVar" style="display:none;">2안으로 바꾸기</button>
       </div>
     </div>
   </div>
@@ -89,11 +108,11 @@
   </div>
 </section>
 
-<!-- ══════════════════ 2. 캘린더 ══════════════════ -->
+<!-- ══════════════════ 2. 기록 (화면5 — 캘린더 + 부위별 운동 횟수) ══════════════════ -->
 <section class="page" id="pg-cal">
   <div class="stats">
-    <div class="st"><b id="calMonthDays">0</b><span>이달 운동일</span></div>
-    <div class="st"><b id="calStreak" class="hot">0</b><span>연속</span></div>
+    <div class="st"><b id="calMonthDays">0</b><span>이달 운동</span></div>
+    <div class="st"><b id="calStreak" class="hot">0</b><span>연속 달성</span></div>
     <div class="st"><b id="calPhotos">0</b><span>이달 오운완</span></div>
   </div>
 
@@ -112,6 +131,19 @@
     </div>
   </div>
 
+  <!-- 화면5 하단 — 부위별 운동 '횟수'(회). 볼륨이 아니다(§8.5 MVP 원칙) -->
+  <div class="card">
+    <h2>이번 달 부위별 운동 횟수</h2>
+    <div class="partbars" id="partCounts"></div>
+    <div class="sub" id="partCountsSub" style="margin-top:10px;"></div>
+    <div class="divider"></div>
+    <!-- 통계는 명세의 5탭에 없지만 기능을 없애지 않고 하위 화면으로 옮겼다 -->
+    <button class="setrow-l" id="btnGoStat">
+      <span class="k">자세한 통계<small>주간 볼륨 · 운동 잔디 · 개인 기록(PR)</small></span>
+      <span class="v"><span class="arr">›</span></span>
+    </button>
+  </div>
+
   <div class="card" id="calEmptyCard" style="display:none;">
     <div class="empty">
       <p>여기, 오늘 사진이 들어갑니다</p>
@@ -119,6 +151,29 @@
     </div>
     <button class="btn block-sm" id="btnCalGoCam">오늘 오운완 남기기</button>
   </div>
+</section>
+
+
+<!-- ══════════════════ 2-b. 루틴 (화면4) ══════════════════ -->
+<section class="page" id="pg-rt">
+  <div class="card">
+    <h2>내 루틴</h2>
+    <div class="sub" id="rtSub">카드를 누르면 오늘 운동으로 시작하거나 루틴을 수정할 수 있어요</div>
+  </div>
+  <div class="rtlist" id="rtList"></div>
+  <button class="btn line block-sm" id="btnRtNew" style="margin-top:4px;">＋ 새 루틴 만들기</button>
+</section>
+
+
+<!-- ══════════════════ 2-c. 피드 (데모) ══════════════════
+     서버 없음. demo.js의 하드코딩 데이터를 그리는 화면이다.
+     실제로 동작하는 건 '이 루틴 가져오기'뿐. -->
+<section class="page" id="pg-feed">
+  <div class="demobar">
+    <b>데모</b>
+    <span>서버에 연결되지 않은 예시 화면입니다. 사람·좋아요·댓글 전부 가짜입니다.</span>
+  </div>
+  <div class="feed" id="feedList"></div>
 </section>
 
 <!-- ══════════════════ 3. 오운완 카메라 ══════════════════ -->
@@ -265,6 +320,17 @@
 
 <!-- ══════════════════ 5. 설정 ══════════════════ -->
 <section class="page" id="pg-set">
+  <!-- 화면6 마이 — 명예의 전당 상시 노출. 전부 '줄지 않는 숫자'다. -->
+  <div class="card" id="hofCard">
+    <h2>🥇 명예의 전당</h2>
+    <div class="stats" style="margin-bottom:8px;">
+      <div class="st"><b id="hofBest" class="hot">0</b><span>최장 연속 달성</span></div>
+      <div class="st"><b id="hofTotal">0</b><span>누적 운동</span></div>
+      <div class="st"><b id="hofPhotos">0</b><span>오운완 사진</span></div>
+    </div>
+    <div class="sub" id="hofSub">이 숫자들은 절대 줄지 않아요</div>
+  </div>
+
   <div class="card">
     <h2>내 루틴</h2>
     <div class="sub" id="setSplitInfo"></div>
@@ -299,7 +365,13 @@
 
   <div class="card">
     <h2>화면</h2>
-    <div class="sub" style="margin-bottom:10px;">포인트 컬러 — 디자인 명세표 §7 미확정 항목입니다. 실물로 보고 고르세요.</div>
+    <!-- 화면6 명세: '테마 설정' 행을 누르면 선택 시트가 열린다 -->
+    <button class="setrow-l" id="setTheme">
+      <span class="k">테마 설정<small>앱 전체 색상</small></span>
+      <span class="v" id="setThemeV">코랄 글로우 <span class="arr">›</span></span>
+    </button>
+    <div class="divider"></div>
+    <div class="sub" style="margin-bottom:10px;" id="accentNote">포인트 컬러 — 디자인 명세표 §7 미확정 항목입니다. 실물로 보고 고르세요.</div>
     <div class="swatches" id="swatches">
       <button data-a="lime"   style="background:#C8FF4D;">라임</button>
       <button data-a="orange" style="background:#FF7A2F;">오렌지</button>
@@ -334,11 +406,6 @@
       <span class="lbl">휴식 종료 알림음<small>진동도 함께 (지원 기기)</small></span>
       <span class="knob"></span>
     </button>
-    <div class="divider"></div>
-    <button class="setrow-l" id="setUnit">
-      <span class="k">무게 단위</span>
-      <span class="v" id="setUnitV">kg <span class="arr">›</span></span>
-    </button>
   </div>
 
   <div class="card">
@@ -361,7 +428,7 @@
   <div class="card">
     <h2>정보</h2>
     <div class="sub">
-      오운완 v1.0.10 · 로컬 저장 전용<br>
+      오운완 v1.0.19 · 로컬 저장 전용<br>
       근거 문서: PRD v1.0 / DEC-001~005 / CR-2026-08-25 / 디자인 수치명세표 v1.0
     </div>
     <div class="divider"></div>
@@ -379,19 +446,22 @@
   <button class="tab on" data-pg="today">
     <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>홈
   </button>
-  <button class="tab" data-pg="cal">
-    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>캘린더
+  <button class="tab" data-pg="rt">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>루틴
+  </button>
+  <button class="tab" data-pg="feed">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M4 18l5-4 4 3 3-2 4 3"/></svg>피드
   </button>
   <span class="fabwrap">
     <button class="fab" id="fabCam" aria-label="오운완 찍기">
       <svg viewBox="0 0 24 24"><path d="M3 8.5A2.5 2.5 0 015.5 6h1.7l1.3-2h7l1.3 2h1.7A2.5 2.5 0 0121 8.5v9A2.5 2.5 0 0118.5 20h-13A2.5 2.5 0 013 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg>
     </button>
   </span>
-  <button class="tab" data-pg="stat">
-    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>통계
+  <button class="tab" data-pg="cal">
+    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>기록
   </button>
   <button class="tab" data-pg="set">
-    <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>설정
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></svg>마이
   </button>
 </nav>
 
@@ -430,12 +500,51 @@
 </div>
 
 <!-- ══════════════════ 온보딩 ══════════════════ -->
+<!-- ══ 스트릭 끊김 — 새 도전 화면 (명세 §2 MVP 확정판) ══
+     금지: "실패/초기화/리셋/끊김", 숫자 0 표시, 취소선. 이모지는 🌱 계열. -->
+<div class="modal" role="dialog" aria-modal="true" id="mBreak">
+  <div class="sheet">
+    <div class="grab"></div>
+    <div style="text-align:center; font-size:34px; line-height:1; margin:6px 0 12px;">🌱</div>
+    <h3 id="brkHead" style="text-align:center;"></h3>
+    <p class="sh-sub" id="brkLead" style="text-align:center;"></p>
+
+    <div class="card" style="margin-bottom:12px;">
+      <h2>🥇 명예의 전당</h2>
+      <div class="stats" style="margin-bottom:8px;">
+        <div class="st"><b id="brkBest" class="hot">0</b><span>최장 연속 달성</span></div>
+        <div class="st"><b id="brkTotal">0</b><span>누적 운동</span></div>
+        <div class="st"><b id="brkDays">0</b><span>함께한 날</span></div>
+      </div>
+      <div class="sub">이 숫자들은 절대 줄지 않아요</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <h2 id="brkGoalTitle">다음 목표 🎯</h2>
+      <div class="sub" id="brkGoalSub"></div>
+    </div>
+
+    <button class="btn" id="brkCta">도전 시작하기</button>
+  </div>
+</div>
+
+<!-- ══ 테마 선택 시트 (화면6 '테마 설정' 행) ══ -->
+<div class="modal" role="dialog" aria-modal="true" id="mTheme">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>테마 설정</h3>
+    <p class="sh-sub">앱 전체 색상이 바뀌어요. 오운완 사진 스타일은 공유할 때 따로 고를 수 있어요.</p>
+    <div class="themepick" id="themePick"></div>
+  </div>
+</div>
+
 <div class="modal" role="dialog" aria-modal="true" id="mOnboard">
   <div class="sheet">
     <div class="grab"></div>
     <h3 id="obTitle">주에 몇 번 운동하실 계획인가요?</h3>
     <p class="sh-sub" id="obSub">1/3 단계 · 나중에 언제든 바꿀 수 있습니다.</p>
-    <div id="obStep1"></div>
+    <div id="obStep0" style="display:none;"></div>
+    <div id="obStep1" style="display:none;"></div>
     <div id="obStep2" style="display:none;"></div>
     <div id="obStep3" style="display:none;">
       <p class="sub" style="margin-bottom:10px;">운동할 요일을 고르세요. 나머지는 휴식일이 됩니다.</p>
@@ -495,19 +604,19 @@
   </div>
 </div>
 
-<!-- ══════════════════ 루틴 편집 ══════════════════ -->
+<!-- ══════════════════ 루틴 수정 (구 '루틴 편집') ══════════════════ -->
 <div class="modal" role="dialog" aria-modal="true" id="mRoutine">
   <div class="sheet">
     <div class="grab"></div>
-    <h3>루틴 편집</h3>
-    <p class="sh-sub" id="rtSub"></p>
+    <h3>루틴 수정</h3>
+    <p class="sh-sub" id="rtEditSub"></p>
     <div class="chips" id="rtDayTabs" style="margin-bottom:10px;"></div>
     <div class="varrow">
       <div class="chips" id="rtVarTabs"></div>
       <button class="btn ghost sm" id="rtCopy1" style="display:none;">1안 복사</button>
     </div>
     <div class="hint" id="rtVarHint" style="margin-bottom:10px;"></div>
-    <div class="exlist" id="rtList"></div>
+    <div class="exlist" id="rtEditList"></div>
     <button class="btn ghost block-sm" id="rtAdd" style="margin-top:12px;">＋ 이 부위에 종목 추가</button>
     <div class="hint">순서는 <b>꾹 눌러서 위아래로</b> 옮기고, <b>왼쪽으로 밀면 삭제</b>됩니다. 바꾼 내용은 오늘 목록에도 바로 반영되며, 이미 체크한 세트는 유지됩니다.</div>
     <button class="btn" id="rtDone" style="margin-top:14px;">완료</button>
@@ -589,6 +698,7 @@
 
 <script src="native.js"></script>
 <script src="data.js"></script>
+<script src="demo.js"></script>
 <script src="store.js"></script>
 <script src="overlay.js"></script>
 <script src="app.js"></script>

@@ -1,0 +1,226 @@
+/* ══════════════════════════════════════════════════════════════
+   오운완 — 앱 테마 3종
+   ──────────────────────────────────────────────────────────────
+   근거(SSOT) : GoogleDrive/디자인시안/테마토큰통합표_v1.0.html §2 토큰 표
+                시안A_코랄글로우_v1.1 / 시안B_라임펄스_v1.1 / 시안C_라벤더무드_v1.1
+   적용 방식  : <html data-design="base|coral|lime|lavender">
+                applyPrefs()가 S.prefs.design 값을 그대로 찍는다.
+
+   ★ 명세 §2 각주 그대로 — 레이아웃·간격·터치 영역·타이포 "크기"는 테마 공통이다.
+     여기서 바뀌는 건 색·라운드·제목 굵기·CTA 질감뿐이다.
+
+   ★ 이 파일의 3원칙 (되돌리기를 구조로 보장하기 위한 것)
+     1. styles.css는 한 글자도 고치지 않는다. 여기서만 덮어쓴다.
+     2. data-design="base"에 해당하는 규칙은 0개다.
+        → '기본'을 고르면 이 파일은 없는 것과 같다.
+     3. display / position / z-index / overflow 및 레이아웃 치수는 안 건드린다.
+
+   ★ 손대지 않는 것
+     · 캘린더 셀 색·딤 25%·날짜 알약  — DEC-001 / 명세표 §4의 4.5:1 대비 게이트
+     · 사진 합성 오버레이(overlay.js) — 테마와 독립. 토큰표 §3 "테마 ↔ 오버레이 분리"
+       (테마별 기본 오버레이 story/stat/polaroid는 별건으로 남겨둠)
+
+   ★ 포인트 컬러(data-accent)와의 관계
+     테마를 고르면 그 테마의 accent가 이긴다. 같은 특이도인데 이 파일이 뒤에 오기 때문.
+     '기본'일 때만 설정의 포인트 컬러 4색이 살아 있다.
+   ══════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════
+   A · 코랄 글로우 — 토큰표 기본값
+   accent #FF6B81 · 135° 그라데이션 CTA · 라운드 24 · 제목 800
+   ══════════════════════════════════════════════════════════════ */
+:root[data-design="coral"]{
+  --bg:#0B0B0F;
+  --bg2:#17171D;
+  --card:#17171D;          /* surface */
+  --card2:#1B1B22;         /* surfaceSub */
+  --card3:#22222A;         /* 파생 — 토글 노브·막대 그래프 */
+  --line:#26262E;          /* border.default */
+  --line2:#34343E;         /* 파생 — 강조 테두리 */
+  --txt:#F2F2F5;           /* text.primary */
+  --txt2:#D8D8DE;          /* 파생 */
+  --sub:#8B8B96;           /* text.secondary */
+  --sub2:#6E6E78;          /* text.tertiary */
+  --ac:#FF6B81;            /* accent.primary */
+  --ac-txt:#14060A;        /* accent.onAccent */
+  --ac-dim:rgba(255,107,129,.14);   /* accent.soft */
+  --ac-soft-tx:#FF8296;    /* accent.textSoft */
+  --r:24px; --r-sm:16px; --r-lg:28px;
+  --cta:linear-gradient(135deg,#FF6B81,#FF8E6B);
+  --cta-sh:0 10px 30px rgba(255,107,129,.30);
+  --hw:800;                /* font.headingWeight */
+}
+
+/* ══════════════════════════════════════════════════════════════
+   B · 라임 펄스 — 플랫·각짐
+   accent #C8F135 · 그라데이션 없음 · 그림자 없음 · 라운드 16 · 제목 900
+   토큰표 §3 "널 처리": gradient·shadow가 null인 테마는 단색·플랫으로 렌더
+   ══════════════════════════════════════════════════════════════ */
+:root[data-design="lime"]{
+  --bg:#08090A;
+  --bg2:#131612;
+  --card:#131612;
+  --card2:#0D0F0E;
+  --card3:#1A1E17;
+  --line:#22261F;
+  --line2:#2E332A;
+  --txt:#EFF1EC;
+  --txt2:#D6D9D2;
+  --sub:#94988E;
+  --sub2:#5D6157;
+  --ac:#C8F135;
+  --ac-txt:#0A0D02;
+  --ac-dim:rgba(200,241,53,.14);
+  --ac-soft-tx:#C8F135;
+  --r:16px; --r-sm:10px; --r-lg:20px;
+  --cta:none;              /* null → primary 단색 */
+  --cta-sh:none;           /* null → 플랫 */
+  --hw:900;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   C · 라벤더 무드 — 글래스
+   accent #B9A5F5 · 120° 그라데이션 · surface는 rgba+blur10 · 라운드 26 · 제목 700
+   ══════════════════════════════════════════════════════════════ */
+:root[data-design="lavender"]{
+  --bg:#0C0B11;
+  --bg2:#1C1926;
+  --card:rgba(255,255,255,.04);      /* surface — 글래스 */
+  --card2:#1C1926;
+  --card3:#241F31;
+  --line:rgba(255,255,255,.07);
+  --line2:rgba(255,255,255,.13);
+  --txt:#F0EEF6;
+  --txt2:#DAD6E4;
+  --sub:#96929F;
+  --sub2:#5F5B6B;
+  --ac:#B9A5F5;
+  --ac-txt:#171224;
+  --ac-dim:rgba(185,165,245,.14);
+  --ac-soft-tx:#CBBCF8;
+  --r:26px; --r-sm:18px; --r-lg:30px;
+  --cta:linear-gradient(120deg,#B9A5F5,#8E7BE0);
+  --cta-sh:0 12px 34px rgba(142,123,224,.35);
+  --hw:700;
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   공통 적용 — 세 테마가 같은 규칙을 쓰고 값만 토큰에서 가져간다
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 배경. 라벤더만 상단 틴트(bg.baseGradientTop #141220) ── */
+:root[data-design="lavender"] body{
+  background:linear-gradient(#141220 0%, #0C0B11 42%) no-repeat, #0C0B11;
+}
+
+/* ── 제목 굵기 ── */
+:root[data-design="coral"] .card > h2,
+:root[data-design="lime"] .card > h2,
+:root[data-design="lavender"] .card > h2{font-weight:var(--hw);}
+:root[data-design="coral"] .appbar h1,
+:root[data-design="lime"] .appbar h1,
+:root[data-design="lavender"] .appbar h1{font-weight:var(--hw);}
+:root[data-design="coral"] .sheet h3,
+:root[data-design="lime"] .sheet h3,
+:root[data-design="lavender"] .sheet h3{font-weight:var(--hw);}
+
+/* ── 칩(태그) — accent.textSoft를 soft 배경 위에. 라임만 각짐(rChip 8) ── */
+:root[data-design="coral"] .card > h2 .tag,
+:root[data-design="lavender"] .card > h2 .tag{color:var(--ac-soft-tx); border-radius:999px;}
+:root[data-design="lime"] .card > h2 .tag{color:var(--ac-soft-tx); border-radius:8px;}
+
+/* ── 주 버튼(CTA) — 그라데이션 + 그림자. 라임은 둘 다 none이라 단색·플랫 ── */
+:root[data-design="coral"] .btn,
+:root[data-design="lavender"] .btn{
+  background:var(--cta); box-shadow:var(--cta-sh);
+}
+:root[data-design="coral"] .btn{border-radius:20px;}       /* radius.button */
+:root[data-design="lime"] .btn{border-radius:14px;}
+:root[data-design="lavender"] .btn{border-radius:24px;}
+
+/* 보조 버튼은 그라데이션·그림자를 물려받으면 안 된다.
+   .btn.ghost보다 위 규칙의 특이도가 높아서 명시적으로 되돌린다. */
+:root[data-design="coral"] .btn.ghost,
+:root[data-design="lime"] .btn.ghost,
+:root[data-design="lavender"] .btn.ghost{
+  background:var(--card2); box-shadow:none;
+}
+:root[data-design="coral"] .btn.line,
+:root[data-design="lime"] .btn.line,
+:root[data-design="lavender"] .btn.line{
+  background:transparent; box-shadow:none;
+}
+:root[data-design="coral"] .btn.danger,
+:root[data-design="lime"] .btn.danger,
+:root[data-design="lavender"] .btn.danger{
+  background:#3A1D1D; box-shadow:none;
+}
+:root[data-design="coral"] .btn:disabled,
+:root[data-design="lime"] .btn:disabled,
+:root[data-design="lavender"] .btn:disabled{
+  background:var(--card2); box-shadow:none;
+}
+
+/* ── 촬영 FAB — CTA와 같은 질감 ── */
+:root[data-design="coral"] nav .fab,
+:root[data-design="lavender"] nav .fab{background:var(--cta);}
+
+/* ── 세그먼트·옵션 라운드 (rChip / rBtn 계열) ── */
+:root[data-design="coral"] .seg button{border-radius:999px;}
+:root[data-design="lavender"] .seg button{border-radius:999px;}
+:root[data-design="lime"] .seg button{border-radius:8px;}
+:root[data-design="coral"] .opt,
+:root[data-design="lavender"] .opt{border-radius:var(--r-sm);}
+:root[data-design="lime"] .opt{border-radius:10px;}
+:root[data-design="coral"] .swatches button,
+:root[data-design="lavender"] .swatches button{border-radius:var(--r-sm);}
+:root[data-design="lime"] .swatches button{border-radius:8px;}
+
+/* ── 종목 카드·시트·앱바 아이콘 ── */
+:root[data-design="coral"] .ex,
+:root[data-design="lime"] .ex,
+:root[data-design="lavender"] .ex{border-radius:var(--r-sm);}
+:root[data-design="coral"] .session,
+:root[data-design="lime"] .session,
+:root[data-design="lavender"] .session{border-radius:var(--r-sm);}
+:root[data-design="coral"] .hint,
+:root[data-design="lime"] .hint,
+:root[data-design="lavender"] .hint{border-radius:var(--r-sm);}
+:root[data-design="coral"] .sheet,
+:root[data-design="lime"] .sheet,
+:root[data-design="lavender"] .sheet{border-radius:var(--r-lg) var(--r-lg) 0 0;}
+:root[data-design="coral"] .modal.center .sheet,
+:root[data-design="lime"] .modal.center .sheet,
+:root[data-design="lavender"] .modal.center .sheet{border-radius:var(--r);}
+:root[data-design="coral"] .appbar .iconbtn,
+:root[data-design="lime"] .appbar .iconbtn,
+:root[data-design="lavender"] .appbar .iconbtn{border-radius:var(--r-sm);}
+:root[data-design="coral"] .cal-head .nav,
+:root[data-design="lime"] .cal-head .nav,
+:root[data-design="lavender"] .cal-head .nav{border-radius:var(--r-sm);}
+
+/* ── 진행 바 — 라임만 각지게 ── */
+:root[data-design="lime"] .prog,
+:root[data-design="lime"] .prog i,
+:root[data-design="lime"] .storagebar,
+:root[data-design="lime"] .storagebar i{border-radius:3px;}
+
+/* ── 라벤더 글래스 — surface가 rgba라 blur를 함께 걸어야 명세대로 보인다 ──
+   backdrop-filter는 새 스태킹 컨텍스트를 만든다. 모달·토스트·타이머 바는
+   전부 </main> 바깥이라 영향이 없음을 확인하고 .card·.stats .st에만 적용했다. */
+:root[data-design="lavender"] .card,
+:root[data-design="lavender"] .stats .st{
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+}
+:root[data-design="lavender"] .appbar{
+  background:linear-gradient(#141220 60%, transparent);
+}
+:root[data-design="lavender"] nav{
+  background:rgba(18,15,28,.82);
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+}
+:root[data-design="lavender"] .sheet{
+  background:#1C1926;      /* 시트는 글래스로 두면 뒤 내용이 비쳐 읽기 어렵다 */
+}

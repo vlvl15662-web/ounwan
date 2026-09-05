@@ -336,7 +336,8 @@ nav .fab.pulse{animation:pulse 1.6s ease-in-out infinite;}
 }
 .day.noph .dnum{background:none; color:#9A9A9A; font-weight:700;}
 :root[data-theme="light"] .day.noph .dnum{color:#8A8A92;}
-.day.noph.sun .dnum{color:#C87A7A;}
+/* 일요일 빨강은 알약이 깔리는 날(.logged/.today)엔 양보한다 — (0,4,0)이 알약 규칙(0,3,0)을 이겨 흰 알약 위 빨간 글씨(2.7:1)가 됐었다 */
+.day.noph.sun:not(.logged):not(.today) .dnum{color:#C87A7A;}
 .day.today{border:2px solid #E5E5E5;}
 .day.today .dnum{background:#E5E5E5; color:#111111;}
 :root[data-theme="light"] .day.today{border-color:#141414;}
@@ -354,6 +355,13 @@ nav .fab.pulse{animation:pulse 1.6s ease-in-out infinite;}
 
 /* 라이트 테마 미기록일 — #8A8A92 on #E9E9EC 는 2.8:1로 미달이었다 */
 :root[data-theme="light"] .day.noph .dnum{color:#5F5F66;}     /* ≈ 5.2:1 */
+/* 단, '사진 없이 운동만 한 날'은 .noph이면서 동시에 .logged다.
+   위 규칙이 아래 .day.logged .dnum(검은 알약 + 흰 글씨)보다 특이도가 높아
+   라이트 모드에서 검은 알약 위에 회색 글씨(≈2.2:1)가 찍히고 있었다.
+   알약이 깔리는 경우에는 흰 글씨를 되돌린다 — 알약 덕에 셀 색과 무관하게 대비가 보장된다. */
+:root[data-theme="light"] .day.logged .dnum{color:#FFFFFF;}   /* 검은 알약 위 ≈ 15:1 */
+/* 일요일도 같은 함정 — 위 라이트 규칙(0,5,0)이 .day.noph.sun .dnum(0,5,0 미만)을 이겨 라이트에서 빨강이 사라졌다 */
+:root[data-theme="light"] .day.noph.sun:not(.logged):not(.today) .dnum{color:#A04545;}   /* on #E9E9EC ≈ 5.0:1 */
 
 /* 사진은 없지만 운동한 날 (A타입) — 셀 내 텍스트 금지(DEC-002) 준수: 색면만.
    숫자는 포인트 컬러 4안 × 2테마 전부에서 4.5:1을 보장해야 하므로
@@ -645,14 +653,14 @@ nav .fab.pulse{animation:pulse 1.6s ease-in-out infinite;}
 .setrow.armed .srbg::before{content:"✓";}
 .setacts button.minus{color:var(--sub);}
 
-/* 루틴 편집: 꾹 눌러 끌어 정렬 */
-#rtList{user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
-#rtList .ex{touch-action:pan-y; transition:transform .12s;}
-#rtList .ex.lifting{position:relative; z-index:5; transform:scale(1.02); box-shadow:0 8px 24px rgba(0,0,0,.45);
+/* 루틴 편집·홈 목록: 꾹 눌러 끌어 정렬 (홈은 헤더만 — 세트 입력칸의 글자 선택은 살린다) */
+#rtEditList,#exList .ex .exhead{user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
+#rtEditList .ex,#exList .ex{touch-action:pan-y; transition:transform .12s;}
+#rtEditList .ex.lifting,#exList .ex.lifting{position:relative; z-index:5; transform:scale(1.02); box-shadow:0 8px 24px rgba(0,0,0,.45);
   border-color:var(--ac); transition:none;}
-#rtList .ex .grip{color:var(--sub2); font-size:18px; padding:0 4px; cursor:grab;}
-#rtList .ex.lifting .grip{color:var(--ac);}
-#rtList .ex.pressing{border-color:color-mix(in srgb, var(--ac) 55%, transparent);}
+#rtEditList .ex .grip{color:var(--sub2); font-size:18px; padding:0 4px; cursor:grab;}
+#rtEditList .ex.lifting .grip{color:var(--ac);}
+#rtEditList .ex.pressing,#exList .ex.pressing{border-color:color-mix(in srgb, var(--ac) 55%, transparent);}
 
 /* 타이머 원형 버튼 — 오늘 화면 우하단 */
 #timerFab{
@@ -666,15 +674,17 @@ body[data-pg="today"] #timerFab{display:flex;}
 #timerFab svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;}
 #timerFab span{font-size:11px; font-weight:900; font-variant-numeric:tabular-nums; letter-spacing:-.3px; line-height:1;}
 #timerFab.run{background:var(--ac); color:var(--ac-txt); border-color:var(--ac);}
-#timerFab.run svg{display:none;}
-#timerFab.run span{font-size:14px;}
 #timerFab.paused{background:var(--warn); color:#141414; border-color:var(--warn);}
-#timerFab.paused svg{display:none;}
-#timerFab.paused span{font-size:14px;}
+/* 돌아가는 동안에도 시계 모양을 유지하고 그 아래 남은 시간만 — ✕로 패널을 닫으면 이 버튼 하나만 남는다 */
+#timerFab.run svg,#timerFab.paused svg{width:17px; height:17px; margin-bottom:2px;}
+#timerFab.run span,#timerFab.paused span{font-size:12.5px;}
 #timerFab:active{transform:scale(.94);}
-/* 입력 중(키보드 올라옴): 하단 바는 숨기고 원형 버튼만 남긴다 */
+/* 입력 중(키보드 올라옴): 하단 바·탭은 숨기고 원형 버튼만 남긴다 */
 body.typing #restBar{display:none !important;}
+body.typing nav{display:none;}
 body.typing #timerFab{bottom:16px;}
+/* 타이머 패널을 ✕로 닫은 뒤: 넓은 바 없이 원형 버튼만 */
+body.restmini #restBar{display:none !important;}
 /* 타이머 패널이 열려 있을 땐 바 대신 패널이 그 자리를 쓴다 */
 body.tp-open #restBar{display:none !important;}
 body.tp-open #timerFab{display:none !important;}
@@ -743,8 +753,9 @@ body.typing #timerPanel{bottom:0;}
 #timerPanel{bottom:calc(var(--navh) + var(--safeb) + 30px);}
 #timerPanel .tp-reset{min-width:58px; min-height:46px; border-radius:12px; background:var(--card2); border:1px solid var(--line);
   color:var(--sub); font-weight:800; font-size:12.5px;}
-#timerPanel .tp-close{width:36px; min-height:32px; border-radius:10px; background:var(--card2); border:1px solid var(--line);
+#timerPanel .tp-close{width:44px; min-height:44px; border-radius:10px; background:var(--card2); border:1px solid var(--line);
   color:var(--sub); font-weight:800;}
+#timerPanel .tp-def{min-height:44px;}
 
 /* 마지막 카드 하단 안내문이 네비·카메라 버튼에 가리지 않게 */
 body{padding-bottom:calc(var(--navh) + var(--safeb) + 48px);}
@@ -759,8 +770,8 @@ body{padding-bottom:calc(var(--navh) + var(--safeb) + 48px);}
 .swipe-del.swiping .srbg,.swipe-del.armed .srbg{opacity:1;}
 .swipe-del.armed .srbg{background:#DC2626;}
 .swipe-del.armed .srbg::before{content:"✓";}
-#rtList .ex .srin{display:block;}
-#rtList .ex .exhead{padding-right:10px;}
+#rtEditList .ex .srin{display:block;}
+#rtEditList .ex .exhead{padding-right:10px;}
 
 /* 유산소(분 단위) — 세트 없이 한 줄 */
 .setrow.timerow .no{font-size:13px;}

@@ -22,6 +22,8 @@ const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 const DEFAULT_PREFS = {
   accent: 'lime',
   theme: 'dark',
+  design: 'base',      // 앱 전체 스킨 — base(기존 화면) / sharp / glass / bold. themes.css 참조
+
   calType: 'A',        // A 사진 달력 / C 아이콘 달력 (개발지시서 병행안)
   unit: 'kg',
   restSec: 60,         // 기본 휴식 1분 (하체 종목은 1분 30초, 종목별로 저장되면 그 값)
@@ -64,13 +66,22 @@ function load() {
     s.logs = o.logs || {};
     s.pr = o.pr || {};
     s.routine = Array.isArray(o.routine) ? o.routine : [];
-    return s;
+    return migrate(s);
   } catch (e) {
     console.warn('[store] 손상된 저장본 — 초기화', e);
     return clone(BLANK);
   }
 }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
+/** 옛 저장본 보정. 앱 시작(load)과 백업 복원(importBackup) 양쪽이 거쳐야 한다 —
+    복원만 빠뜨렸더니 v1.0.16 백업을 불러온 기록에 '전신'이 그대로 남았다(2026-09-05 실기기). */
+function migrate(s) {
+  /* '전신' 부위는 2026-09-05에 없앴다 — 종목 사전 기준으로 되돌린다(직접 만든 종목은 코어) */
+  const fixPart = e => { if (e && e.part === '전신') e.part = ((g.OWDATA && g.OWDATA.EX_BY_ID[e.id]) || {}).part || '코어'; };
+  (s.routine || []).forEach(d => { (d && d.ex || []).forEach(fixPart); (d && d.ex2 || []).forEach(fixPart); });
+  Object.keys(s.logs || {}).forEach(k => ((s.logs[k] || {}).ex || []).forEach(fixPart));
+  return s;
+}
 
 /** 상태를 통째로 갈아끼우되 **객체 아이덴티티는 유지**한다.
     S를 재할당하면 이미 S를 붙잡고 있는 코드(app.js의 지역 참조 등)가
@@ -174,8 +185,9 @@ const thumbCache = new Map();
 async function thumbURL(photoId) {
   if (thumbCache.has(photoId)) return thumbCache.get(photoId);
   const p = Photos.get(photoId).then(rec => {
-    if (!rec || !rec.thumb) { thumbCache.delete(photoId); return null; }
-    return blobURL('t' + photoId, rec.thumb);
+    const b = rec && (rec.thumb || rec.full);       // 썸네일 생성이 실패한 사진도 원본으로라도 칸을 채운다
+    if (!b) { thumbCache.delete(photoId); return null; }
+    return blobURL('t' + photoId, b);
   }).catch(e => { thumbCache.delete(photoId); return null; });
   thumbCache.set(photoId, p);
   return p;
@@ -232,26 +244,133 @@ function durationOf(log) {
   return Math.max(0, Math.round((end - log.start) / 1000));
 }
 
-/**
- * 연속일수(스트릭).
- * 규칙: 오늘 기록이 있으면 오늘부터, 없으면 어제부터 거슬러 세되
- *       "휴식일로 설정한 요일"은 스트릭을 끊지 않고 건너뛴다.
- *       (v0.2는 휴식일을 고려하지 않아 주3회 사용자의 스트릭이 항상 1이었음)
- */
+/* ═══════════════════ 스트릭 — PRD v1.2 §10.2 정의 ═══════════════════
+   스트릭 = "루틴 예정일 연속 달성 횟수". 달력상 연속일이 아니다.
+     · 예정일에 완료      → +1
+     · 예정일이 아닌 날   → 통과 (달성해도 +1 아니고, 안 해도 안 끊긴다)
+     · 예정일에 미완료    → 그 자리에서 끊김
+   표기 단위는 전부 '회'(§8.5). "N일 연속"·"N일째"는 폐기 표기다.
+
+   v1.0과의 차이: v1.0은 예정일이 아닌 날의 보너스 운동도 +1로 셌다. */
+
+/** 그 날짜가 루틴 예정일인가. 요일 미설정이면 매일이 예정일. */
+function isScheduled(date) {
+  if (!S.dows || !S.dows.length) return true;
+  return S.dows.includes(date.getDay());
+}
+
 function streak() {
-  const restDays = new Set();
-  for (let i = 0; i < 7; i++) if (!(S.dows || []).includes(i)) restDays.add(i);
-  const hasAll = restDays.size === 7;      // 요일 미설정 시 전부 카운트
   let d = new Date(); d.setHours(0, 0, 0, 0);
-  if (!isWorkoutDay(S.logs[dkey(d)])) d = addDays(d, -1);
+  /* 오늘이 예정일인데 아직 미완료라면 아직 '끊김'이 아니다 — 오늘은 빼고 어제부터 센다. */
+  if (isScheduled(d) && !isWorkoutDay(S.logs[dkey(d)])) d = addDays(d, -1);
   let n = 0, guard = 0;
   while (guard++ < 800) {
-    const k = dkey(d);
-    if (isWorkoutDay(S.logs[k])) { n++; d = addDays(d, -1); continue; }
-    if (!hasAll && restDays.has(d.getDay())) { d = addDays(d, -1); continue; }  // 휴식일 통과
+    if (!isScheduled(d)) { d = addDays(d, -1); continue; }          // 예정일 아님 → 통과
+    if (isWorkoutDay(S.logs[dkey(d)])) { n++; d = addDays(d, -1); continue; }
+    break;                                                          // 예정일 미달성 → 끊김
+  }
+  return n;
+}
+
+/** 특정 날짜 '직전까지'의 스트릭 — 끊김 화면에서 "N회나 해냈어요"에 쓴다. */
+function streakUpTo(dateKey) {
+  let d = addDays(parseKey(dateKey), -1); d.setHours(0, 0, 0, 0);
+  let n = 0, guard = 0;
+  while (guard++ < 800) {
+    if (!isScheduled(d)) { d = addDays(d, -1); continue; }
+    if (isWorkoutDay(S.logs[dkey(d)])) { n++; d = addDays(d, -1); continue; }
     break;
   }
   return n;
+}
+
+/** 최장 스트릭(회) — 명예의 전당용. 기록 전체를 훑어 파생 계산하며 신규 상태값이 없다. */
+function streakBest() {
+  const keys = Object.keys(S.logs).filter(k => isWorkoutDay(S.logs[k])).sort();
+  if (!keys.length) return 0;
+  let d = parseKey(keys[0]); d.setHours(0, 0, 0, 0);
+  const end = new Date(); end.setHours(0, 0, 0, 0);
+  let cur = 0, best = 0, guard = 0;
+  while (d <= end && guard++ < 4000) {
+    if (isScheduled(d)) {
+      if (isWorkoutDay(S.logs[dkey(d)])) { cur++; if (cur > best) best = cur; }
+      else cur = 0;
+    }
+    d = addDays(d, 1);
+  }
+  return Math.max(best, streak());
+}
+
+/** 다음 목표 = 최고 기록 + 1회. 단 기록이 빈약하면(3 미만) 최소 목표 3회. */
+function nextGoal() {
+  const b = streakBest();
+  return b < 3 ? 3 : b + 1;
+}
+
+/** 가입 후 함께한 일수. '일' 단위 유지 — 스트릭이 아니므로 §8.5 '회' 통일 대상이 아니다. */
+function daysTogether() {
+  if (!S.createdAt) return 1;
+  const a = new Date(S.createdAt); a.setHours(0, 0, 0, 0);
+  const b = new Date(); b.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((b - a) / 86400000)) + 1;   // 가입 당일 = 1일
+}
+
+/** 명예의 전당 — 절대 줄지 않는 숫자들 */
+function hallOfFame() {
+  let photos = 0;
+  Object.keys(S.logs).forEach(k => { photos += (S.logs[k].photos || []).length; });
+  return { best: streakBest(), total: totalDays(), photos, days: daysTogether() };
+}
+
+/* ══ 원판 등급 — 하드 테마의 '무게가 늘어나는' 표현 ══
+   근거: 08_테마시안/03_원판성장_v0.1.html §규칙 표.
+
+   ★ 판은 '최고 기록' 기준으로만 올린다. 한 번 얻은 판은 뺏지 않는다.
+     연속이 끊겼다고 45 LB가 5 LB로 돌아가면, 끊김 화면에서 위로해 놓고
+     판으로 벌주는 꼴이 된다. §10.2 "명예의 전당 숫자는 줄지 않는다"와 같은 원칙.
+     현재 연속은 판 위 숫자로만 내려간다.
+
+   첫 승급을 5회로 낮게 잡은 건 일주일 안에 한 번은 판이 커지게 해
+   초반 이탈을 막기 위한 것이고, 뒤로 갈수록 간격을 벌려 희소하게 만들었다. */
+const PLATE_TIERS = [
+  { lv: 1, lb: 5,  min: 0  },
+  { lv: 2, lb: 10, min: 5  },
+  { lv: 3, lb: 25, min: 10 },
+  { lv: 4, lb: 35, min: 20 },
+  { lv: 5, lb: 45, min: 50 }
+];
+/** 숫자 n에 해당하는 원판 등급 { lv, lb, min } */
+function plateTier(n) {
+  n = Math.max(0, Number(n) || 0);
+  let t = PLATE_TIERS[0];
+  for (let i = 0; i < PLATE_TIERS.length; i++) if (n >= PLATE_TIERS[i].min) t = PLATE_TIERS[i];
+  return t;
+}
+/** 다음 판까지. 최고 등급이면 next=null, pct=100. */
+function plateNext(n) {
+  n = Math.max(0, Number(n) || 0);
+  const cur = plateTier(n);
+  const nx = PLATE_TIERS[cur.lv] || null;          // lv가 1-base라 인덱스가 곧 다음 칸
+  if (!nx) return { cur, next: null, need: 0, pct: 100 };
+  const span = nx.min - cur.min;
+  return {
+    cur, next: nx,
+    need: nx.min - n,
+    pct: Math.max(0, Math.min(100, Math.round((n - cur.min) / span * 100)))
+  };
+}
+
+/** 가장 최근에 놓친 예정일. 없으면 null.
+    오늘은 아직 할 기회가 남아 있으므로 어제부터 본다. */
+function lastMissedDay() {
+  let d = addDays(new Date(), -1); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 90; i++) {
+    if (isScheduled(d)) {
+      return isWorkoutDay(S.logs[dkey(d)]) ? null : dkey(d);   // 최근 예정일을 달성했으면 끊김 아님
+    }
+    d = addDays(d, -1);
+  }
+  return null;
 }
 /** 촬영 시점에 사진에 박을 D+n — 오늘 아직 기록 전이어도 "오늘 포함" 값 */
 function streakForPhoto() {
@@ -280,8 +399,44 @@ function monthStats(y, m) {
   return { days, photos, vol };
 }
 
+/** 이번 달 부위별 운동 '횟수'(회).
+    볼륨이 아니라 "그 부위를 한 날이 며칠인가"다 — MVP 원칙(§8.5). */
+function partCounts(y, m) {
+  const tally = {};
+  Object.keys(S.logs).forEach(k => {
+    const d = parseKey(k);
+    if (d.getFullYear() !== y || d.getMonth() !== m) return;
+    const L = S.logs[k];
+    if (!isWorkoutDay(L)) return;
+    const parts = new Set();
+    (L.ex || []).forEach(e => { if ((e.sets || []).some(s => s.done) && e.part) parts.add(e.part); });
+    parts.forEach(p => { tally[p] = (tally[p] || 0) + 1; });
+  });
+  return Object.entries(tally).map(([part, n]) => ({ part, n })).sort((a, b) => b.n - a.n);
+}
+
+/** 부위 배지용 — 그날의 대표 부위.
+    주 배지 = 수행 종목 수가 가장 많은 부위(동률이면 루틴에 먼저 나온 부위).
+    보조 배지는 최대 1개, 3부위 이상이면 주 배지를 "하체 외 2" 형태로 합산한다(배지 규격 §구성·개수). */
+function badgeParts(log) {
+  if (!log || !log.ex) return { main: '', sub: '', extra: 0 };
+  const order = [], count = {};
+  log.ex.forEach(e => {
+    if (!e.part || !(e.sets || []).some(s => s.done)) return;
+    if (!(e.part in count)) { count[e.part] = 0; order.push(e.part); }
+    count[e.part]++;
+  });
+  if (!order.length) return { main: '', sub: '', extra: 0 };
+  const ranked = order.slice().sort((a, b) => count[b] - count[a] || order.indexOf(a) - order.indexOf(b));
+  const main = ranked[0];
+  if (ranked.length === 1) return { main, sub: '', extra: 0 };
+  if (ranked.length === 2) return { main, sub: ranked[1], extra: 0 };
+  return { main, sub: '', extra: ranked.length - 1 };     // 3부위 이상 → "하체 외 2"
+}
+
 /* ───────────────────── PR (개인기록) ───────────────────── */
-const e1rm = (kg, reps) => (reps > 0 && kg > 0) ? Math.round(kg * (1 + reps / 30) * 10) / 10 : 0;
+/* Epley. 1회는 그 자체가 1RM이라 공식(kg × 1.033)을 태우지 않는다 */
+const e1rm = (kg, reps) => (reps > 0 && kg > 0) ? (reps === 1 ? kg : Math.round(kg * (1 + reps / 30) * 10) / 10) : 0;
 
 /** 로그 저장 시 PR 갱신. 갱신된 종목 배열 반환 (축하 표시용) */
 function updatePR(log) {
@@ -302,6 +457,13 @@ function updatePR(log) {
     });
   });
   return hits;
+}
+/** 기록을 지우거나 체크를 풀면 PR을 전체 기록에서 다시 세운다 — updatePR은 올리기만 하므로 없는 날짜를 가리키는 PR이 남는다.
+    ponytail: 매번 전체 스캔. 기록이 수천 일이 되면 월 단위 캐시로 */
+function rebuildPR() {
+  S.pr = {};
+  Object.keys(S.logs).sort().forEach(k => updatePR(S.logs[k]));
+  return S.pr;
 }
 function prList(limit) {
   return Object.keys(S.pr)
@@ -329,12 +491,14 @@ function dayVariant(day, v) {
   return (v === 1 && Array.isArray(day.ex2) && day.ex2.length) ? day.ex2 : (day.ex || []);
 }
 function hasVariant2(day) { return !!(day && Array.isArray(day.ex2) && day.ex2.length); }
-/** 새 기록을 만들 때 이번 차례의 안을 고르고, 다음 차례를 뒤집는다 */
-function pickVariant(day) {
-  if (!hasVariant2(day)) return 0;
-  const v = day.turn === 1 ? 1 : 0;
-  day.turn = 1 - v;
-  return v;
+/** 새 기록을 만들 때 이번 차례의 안. 차례는 여기서 넘기지 않는다 — 로그를 만드는 시점에 넘기면
+    앱만 열어봐도, 빈 지난 날짜를 열어봐도 차례가 넘어간다. 실제로 운동한 시점에 markVariantDone이 넘긴다. */
+function pickVariant(day) { return hasVariant2(day) && day.turn === 1 ? 1 : 0; }
+/** 이 기록이 '운동한 날'이 되는 순간(첫 세트 체크·사진 저장) 다음 차례를 뒤집는다. 여러 번 불러도 같은 값. */
+function markVariantDone(log) {
+  const day = log && routineDay(log.dayIdx);
+  if (!hasVariant2(day)) return;
+  day.turn = log.variant === 1 ? 0 : 1;
 }
 
 /** 오늘 로그를 가져오거나 만든다. 루틴 스냅샷을 떠서 넣으므로 이후 루틴 편집에 영향받지 않음 (F1-4) */
@@ -480,14 +644,29 @@ function validateState(st) {
     if (!Array.isArray(L.ex)) L.ex = [];
     if (!Array.isArray(L.photos)) L.photos = [];
     L.label = String(L.label == null ? '운동' : L.label).slice(0, LIMITS.nameLen);
+    L.dayIdx = Number(L.dayIdx) || 0; L.variant = L.variant === 1 ? 1 : 0;
+    L.ex = L.ex.filter(e => e && typeof e === 'object');
     L.ex.forEach(e => {
       e.nm = String(e.nm || '').slice(0, LIMITS.nameLen);
       if (!Array.isArray(e.sets)) e.sets = [];
       if (e.sets.length > LIMITS.sets) e.sets.length = LIMITS.sets;
+      /* 세트·지난 기록 값은 HTML 속성(value="…")에 그대로 들어간다 — 숫자로 강제해야 조작된 백업이 스크립트가 못 된다 */
+      e.sets = e.sets.filter(s => s && typeof s === 'object').map(s => ({
+        kg: (s.kg === '' || s.kg == null) ? '' : (Number(s.kg) || 0), reps: Number(s.reps) || 0,
+        done: !!s.done, warm: !!s.warm
+      }));
+      if (e.prev) e.prev = { kg: Number(e.prev.kg) || 0, reps: Number(e.prev.reps) || 0, date: String(e.prev.date || '').slice(0, 10) };
+      if (e.rest != null) e.rest = Number(e.rest) || 0;
     });
   });
   if (st.pr && (typeof st.pr !== 'object' || Array.isArray(st.pr))) st.pr = {};
   if (Object.keys(st.pr || {}).length > LIMITS.pr) st.pr = {};
+  Object.keys(st.pr || {}).forEach(id => {                // PR도 kg·reps·e1rm이 그대로 화면에 찍힌다
+    const p = st.pr[id];
+    if (!p || typeof p !== 'object') { delete st.pr[id]; return; }
+    st.pr[id] = { nm: String(p.nm || '').slice(0, LIMITS.nameLen), kg: Number(p.kg) || 0, reps: Number(p.reps) || 0,
+      e1rm: Number(p.e1rm) || 0, date: String(p.date || '').slice(0, 10) };
+  });
   if (!Array.isArray(st.dows)) st.dows = [];
   st.dows = st.dows.filter(n => Number.isInteger(n) && n >= 0 && n <= 6);
   return st;
@@ -506,6 +685,7 @@ async function importBackup(payload) {
     next = Object.assign(clone(BLANK), deepClean(payload.state || {}));
     next.prefs = Object.assign({}, DEFAULT_PREFS, deepClean(payload.state && payload.state.prefs) || {});
     validateState(next);
+    migrate(next);
   } catch (e) {
     throw e;                                       // 검증 실패 — 기존 데이터는 손대지 않았다
   }
@@ -544,7 +724,8 @@ function blobToDataURL(b) {
   return new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(b); });
 }
 async function dataURLToBlob(u) {
-  if (!u) return null;
+  /* 백업 파일의 사진 필드에 외부 주소가 들어 있으면 복원하는 순간 fetch가 밖으로 나간다 — data:image/ 만 받는다 */
+  if (!u || !/^data:image\//i.test(String(u))) return null;
   const r = await fetch(u); return r.blob();
 }
 
@@ -585,13 +766,16 @@ Object.defineProperty(g.OW, 'S', {
 });
 Object.assign(g.OW, {
   DEFAULT_PREFS, BLANK, LS_KEY, replaceState,
-  save, load, clone,
+  save, load, clone, migrate,
   pad, dkey, today, parseKey, addDays, DOW,
   Photos, blobURL, dropURL, dropAllURLs, dropPhotoCache, thumbURL, thumbCache,
   isWorkoutDay, doneSetCount, doneExCount, fullDoneExCount, doneExercises,
   volumeOf, durationOf, streak, streakForPhoto, totalDays, weekDays, monthStats,
-  e1rm, updatePR, prList,
-  isRestDay, routineDay, dayVariant, hasVariant2, pickVariant, ensureLog, prefill, pruneEmptyLogs,
+  isScheduled, streakUpTo, streakBest, nextGoal, daysTogether, hallOfFame, lastMissedDay,
+  partCounts, badgeParts,
+  PLATE_TIERS, plateTier, plateNext,
+  e1rm, updatePR, rebuildPR, prList,
+  isRestDay, routineDay, dayVariant, hasVariant2, pickVariant, markVariantDone, ensureLog, prefill, pruneEmptyLogs,
   exportBackup, exportBackupBlob, importBackup, validateState, deepClean,
   storageInfo, purgeOldPhotos,
   blobToDataURL, dataURLToBlob

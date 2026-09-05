@@ -1,0 +1,340 @@
+/* ══════════════════════════════════════════════════════════════
+   오운완 — 추가 테마 2종 : 인스타 / 하드
+   ──────────────────────────────────────────────────────────────
+   근거(시안) : 08_테마시안/01_인스타테마_v0.1.html
+                08_테마시안/02_하드테마_v0.6.html  (원판 성장 포함)
+                08_테마시안/03_원판성장_v0.1.html  (등급 규칙 표)
+   적용 방식  : <html data-design="insta|hard">
+                applyPrefs()가 S.prefs.design 값을 그대로 찍는다.
+
+   ★ 왜 themes.css가 아니라 별도 파일인가
+     themes.css는 디자인시안 SSOT(테마토큰통합표)를 1:1로 옮긴 파일이다.
+     인스타·하드는 그 표에 없는, 이 프로젝트에서 새로 만든 테마다.
+     출처가 다르면 파일도 나눈다 — 되돌릴 때 <link> 한 줄만 빼면 된다.
+
+   ★ 3원칙은 themes.css와 동일
+     1. styles.css는 한 글자도 고치지 않는다.
+     2. data-design="base"에 해당하는 규칙은 0개다.
+     3. 레이아웃 치수·터치 영역(--tap 48px)·캘린더 대비 게이트는 안 건드린다.
+
+   ★ 손대지 않는 것
+     · 사진 합성 오버레이(overlay.js) — 테마와 독립.
+     · 캘린더 딤 25% / 날짜 알약 — DEC-001.
+   ══════════════════════════════════════════════════════════════ */
+
+
+/* ══════════════════════════════════════════════════════════════
+   D · 인스타 — 흰 종이 + 그라데이션
+   ──────────────────────────────────────────────────────────────
+   정체성은 '흰 배경 + 얇은 회색 선 + 사진이 주인공'이다.
+   그래서 인스타를 고르면 라이트 모드로 함께 넘어간다(app.js).
+   다크로 되돌려도 깨지지 않도록 두 벌 다 정의해 둔다.
+
+   CTA 그라데이션에서 주황(#F58529)은 뺐다.
+   흰 글자를 얹으면 주황 구간이 2.4:1이라 §8.1 가독성 게이트를 통과하지 못한다.
+   대신 그림자에 주황빛을 남겨 브랜드 인상만 가져왔다.
+   ══════════════════════════════════════════════════════════════ */
+:root[data-design="insta"]{
+  /* 다크 — 인스타 다크모드 계열 */
+  --bg:#000000;
+  --bg2:#0A0A0A;
+  --card:#121212;
+  --card2:#1C1C1C;
+  --card3:#262626;
+  --line:#262626;
+  --line2:#363636;
+  --txt:#FAFAFA;
+  --txt2:#E4E4E4;
+  --sub:#A8A8A8;
+  --sub2:#737373;
+  --ac:#F0538C;            /* 검정 위 5.8:1 */
+  --ac-txt:#2B0714;        /* 이 분홍 위 5.3:1 */
+  --ac-dim:rgba(240,83,140,.16);
+  --ac-soft-tx:#FF87B2;
+  --r:14px; --r-sm:10px; --r-lg:18px;
+  --cta:linear-gradient(95deg,#E1306C 0%,#C13584 55%,#833AB4 100%);
+  --cta-tx:#FFFFFF;        /* 그라데이션 전 구간에서 4.5:1 이상 */
+  --cta-sh:0 8px 22px rgba(245,133,41,.22), 0 2px 10px rgba(193,53,132,.30);
+  --hw:800;
+}
+:root[data-design="insta"][data-theme="light"]{
+  --bg:#FAFAFA;
+  --bg2:#FFFFFF;
+  --card:#FFFFFF;
+  --card2:#F5F5F5;
+  --card3:#EFEFEF;
+  --line:#DBDBDB;
+  --line2:#C7C7C7;
+  --txt:#262626;
+  --txt2:#3A3A3A;
+  --sub:#737373;           /* #8E8E8E는 흰 배경에서 3.5:1이라 한 단 낮췄다 */
+  --sub2:#8E8E8E;
+  --ac:#C13584;            /* 흰 위 6.3:1 / 흰 글자 얹어도 6.3:1 — 양방향 통과 */
+  --ac-txt:#FFFFFF;
+  --ac-dim:rgba(193,53,132,.10);
+  --ac-soft-tx:#A32B70;
+  --cta-sh:0 8px 22px rgba(245,133,41,.18), 0 2px 10px rgba(193,53,132,.20);
+}
+
+/* ── 제목 굵기 ── */
+:root[data-design="insta"] .card > h2,
+:root[data-design="insta"] .appbar h1,
+:root[data-design="insta"] .sheet h3{font-weight:var(--hw); letter-spacing:-.5px;}
+
+/* ── CTA — 인스타 그라데이션. 라운드 10px(인스타 버튼 각) ── */
+:root[data-design="insta"] .btn{
+  background:var(--cta); color:var(--cta-tx);
+  box-shadow:var(--cta-sh); border-radius:10px;
+}
+:root[data-design="insta"] .btn.ghost{
+  background:var(--card2); color:var(--txt); box-shadow:none;
+}
+:root[data-design="insta"] .btn.line{background:transparent; color:var(--txt); box-shadow:none;}
+:root[data-design="insta"] .btn.danger{background:#3A1D1D; color:var(--danger); box-shadow:none;}
+:root[data-design="insta"][data-theme="light"] .btn.danger{background:#FDECEC; color:#C02626; border-color:#F3C9C9;}
+:root[data-design="insta"] .btn:disabled{background:var(--card2); color:var(--sub2); box-shadow:none;}
+
+/* ── 촬영 FAB — 인스타의 상징. CTA와 같은 그라데이션 ── */
+:root[data-design="insta"] nav .fab{background:var(--cta); box-shadow:var(--cta-sh);}
+
+/* ── 칩·세그먼트·옵션 — 알약 대신 인스타식 8~10px 각 ── */
+:root[data-design="insta"] .card > h2 .tag{color:var(--ac-soft-tx); border-radius:6px;}
+:root[data-design="insta"] .seg button{border-radius:8px;}
+:root[data-design="insta"] .opt,
+:root[data-design="insta"] .swatches button{border-radius:var(--r-sm);}
+:root[data-design="insta"] .ex,
+:root[data-design="insta"] .session,
+:root[data-design="insta"] .hint{border-radius:var(--r-sm);}
+:root[data-design="insta"] .appbar .iconbtn,
+:root[data-design="insta"] .cal-head .nav{border-radius:var(--r-sm);}
+:root[data-design="insta"] .sheet{border-radius:var(--r-lg) var(--r-lg) 0 0;}
+:root[data-design="insta"] .modal.center .sheet{border-radius:var(--r);}
+
+/* ── 부위 바 / 진행 바 — 그라데이션으로 채운다 ── */
+:root[data-design="insta"] .pb-bar i,
+:root[data-design="insta"] .prog i{background:var(--cta);}
+
+/* ── 스탯 타일 — 인스타 프로필 헤더 문법(테두리 없이 숫자만, 사이에 얇은 구분선) ── */
+:root[data-design="insta"] .stats{gap:0;}
+:root[data-design="insta"] .stats .st{
+  background:none; border:none; border-left:1px solid var(--line);
+  border-radius:0; padding:4px 6px;
+}
+:root[data-design="insta"] .stats .st:first-child{border-left:none;}
+:root[data-design="insta"] .stats .st b{font-weight:700; font-size:20px;}
+:root[data-design="insta"] .stats .st span{font-weight:600;}
+
+/* ── 캘린더 — 셀을 인스타식 8px 각으로, 운동한 날은 그라데이션 ──
+   날짜 숫자는 styles.css에서 검정 알약 70% + 흰 글씨로 고정돼 있어(DEC-001)
+   셀 배경을 무엇으로 바꾸든 대비가 셀 색에 의존하지 않는다. 그래서 원색을 써도 안전하다. */
+:root[data-design="insta"] .day{border-radius:8px;}
+:root[data-design="insta"] .day.logged{
+  background:linear-gradient(150deg,#E1306C,#C13584 55%,#833AB4);
+  border-color:transparent;
+}
+:root[data-design="insta"] .day .cico.photo{background:var(--cta);}
+
+/* ── 피드 배지 — 그라데이션 알약. 인스타 감성의 본체 ── */
+:root[data-design="insta"] .fbadge{background:var(--cta); color:#FFFFFF;}
+:root[data-design="insta"] .rt-play{background:var(--cta); color:#FFFFFF;}
+
+
+/* ══════════════════════════════════════════════════════════════
+   E · 하드 — 녹슨 창고
+   ──────────────────────────────────────────────────────────────
+   시안 v0.6 그대로: 라운드 0, 선 2~3px, 굵은 그레인, 죽은 붉은색.
+   스탯 타일은 주물 원판이 되고, 기록이 쌓일수록 판이 커진다(§원판 성장).
+
+   글꼴: 시안은 Archivo Black / Barlow Condensed를 썼지만 앱은 오프라인이라
+        웹폰트를 못 쓴다. Pretendard Black(900) + 대문자 + 자간으로 대신한다.
+        실제 폰트를 넣으려면 woff2 2개를 fonts/에 추가해야 한다(별건).
+   ══════════════════════════════════════════════════════════════ */
+:root[data-design="hard"]{
+  --bg:#121415;
+  --bg2:#0B0D0E;
+  --card:#191C1D;
+  --card2:#212425;
+  --card3:#2A2E30;
+  --line:#33383B;          /* 선은 항상 2px로 쓴다 — 1px은 깔끔해 보인다 */
+  --line2:#454B4E;
+  --txt:#E4E2DC;
+  --txt2:#B0B2B1;
+  --sub:#8A8E90;
+  --sub2:#5A5F61;
+  --ac:#D2765F;            /* 산화된 붉은색. 이 배경 위 5.2:1 */
+  --ac-txt:#1A0805;
+  --ac-dim:rgba(210,118,95,.15);
+  --ac-soft-tx:#E8967F;
+  --rust:#A8402C;          /* 버튼·강조면용 진한 녹 */
+  --rust-d:#5E271C;
+  --r:0px; --r-sm:0px; --r-lg:0px;
+  --cta:#A8402C;
+  --cta-tx:#F2EAE7;        /* #A8402C 위 5.1:1 */
+  --cta-sh:none;
+  --hw:900;
+}
+
+/* ── 그레인 — '거친 느낌'의 8할. 화면 전체에 한 겹 덮는다 ──
+   pointer-events:none이라 조작을 막지 않고, 고정 배경이라 스크롤 중 재계산이 없다. */
+:root[data-design="hard"] body::before{
+  content:''; position:fixed; inset:0; z-index:300; pointer-events:none;
+  opacity:.11; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* ── 긁힘 + 구석 그늘 ──
+   그늘은 26%까지만. 이 층은 화면에 고정돼 있어서 아래로 스크롤된 카드가
+   계속 같은 그늘 밑으로 들어온다 — 한 화면짜리 시안보다 훨씬 약하게 잡아야 글이 읽힌다. */
+:root[data-design="hard"] body::after{
+  content:''; position:fixed; inset:0; z-index:299; pointer-events:none;
+  background:
+    repeating-linear-gradient(74deg, rgba(255,255,255,.020) 0 1px, transparent 1px 47px),
+    repeating-linear-gradient(-63deg, rgba(0,0,0,.10) 0 1px, transparent 1px 83px),
+    radial-gradient(135% 85% at 50% 4%, transparent 62%, rgba(0,0,0,.26) 100%);
+}
+
+/* ── 라운드 0 — styles.css가 px로 박아둔 값들을 전부 각지게 ──
+   :where()는 특이도가 0이라 이 규칙의 무게는 :root[data-design]만큼이다. */
+:root[data-design="hard"] :where(
+  button, .card, .ex, .session, .hint, .opt, .seg button, .swatches button,
+  .prog, .prog i, .storagebar, .storagebar i, .appbar .iconbtn, .cal-head .nav,
+  .day, .sheet, .modal.center .sheet, .rtcard, .rt-chips i, .fcard, .fbtn,
+  .frt, .demobar, .tcard, .tmini, .fbadge, .btn, .viewbanner, .toast
+){border-radius:0;}
+
+/* ── 두꺼운 선 ── */
+:root[data-design="hard"] .card,
+:root[data-design="hard"] .ex,
+:root[data-design="hard"] .rtcard,
+:root[data-design="hard"] .fcard,
+:root[data-design="hard"] .frt{border-width:2px;}
+:root[data-design="hard"] nav{border-top:3px solid #23282A;}
+:root[data-design="hard"] .card > h2{
+  font-weight:var(--hw); letter-spacing:-.3px;
+  border-bottom:2px solid var(--line); padding-bottom:9px;
+}
+:root[data-design="hard"] .appbar h1{
+  font-weight:var(--hw); letter-spacing:-.6px;
+}
+:root[data-design="hard"] .sheet h3{font-weight:var(--hw);}
+
+/* ── CTA — 광 없는 녹슨 철판 ── */
+:root[data-design="hard"] .btn{
+  background:var(--cta); color:var(--cta-tx);
+  border:3px solid var(--rust-d); box-shadow:none;
+  font-weight:900; letter-spacing:.4px;
+}
+:root[data-design="hard"] .btn.ghost{
+  background:var(--card2); color:var(--txt); border:2px solid var(--line2);
+}
+:root[data-design="hard"] .btn.line{background:transparent; color:var(--txt); border:2px solid var(--line2);}
+:root[data-design="hard"] .btn.danger{background:#3A1D1D; color:var(--danger); border:2px solid #5A2A2A;}
+:root[data-design="hard"] .btn:disabled{background:var(--card2); color:var(--sub2); border:2px solid var(--line);}
+
+/* ── 진행 바 — 매끈한 채움 대신 덩어리로 ── */
+:root[data-design="hard"] .prog,
+:root[data-design="hard"] .pb-bar{background:#07090A; border:2px solid var(--line);}
+:root[data-design="hard"] .prog i,
+:root[data-design="hard"] .pb-bar i{
+  background:repeating-linear-gradient(90deg,#A8402C 0 10px,#7A2E20 10px 13px);
+}
+
+/* ── 캘린더 — 벽에 박은 출석 도장판 ── */
+:root[data-design="hard"] .day{border-width:2px;}
+
+/* ── 촬영 FAB — 작은 원판 ── */
+:root[data-design="hard"] nav .fab{
+  background:
+    radial-gradient(circle at 26% 28%, rgba(138,74,44,.60), transparent 34%),
+    radial-gradient(circle at 72% 68%, rgba(107,64,40,.55), transparent 38%),
+    linear-gradient(160deg,#33383A,#16191A);
+  border-radius:50% 47% 53% 48% / 48% 52% 47% 53%;
+  box-shadow:0 4px 9px rgba(0,0,0,.7),
+    inset 0 3px 5px -1px rgba(255,255,255,.14),
+    inset 0 -5px 7px -2px rgba(0,0,0,.9);
+  color:var(--txt);
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   E-2 · 원판 성장 — 하드 테마 전용
+   ──────────────────────────────────────────────────────────────
+   스탯 타일이 주물 원판이 된다. 기록이 쌓이면 판이 커지고 각인이 바뀐다.
+     5 LB(1~4회) → 10 LB(5~9) → 25 LB(10~19) → 35 LB(20~49) → 45 LB(50+)
+
+   ★ 판은 '최고 기록' 기준으로만 올린다. 한 번 얻은 판은 뺏지 않는다.
+     연속이 끊겨도 판은 그대로 두고 판 위 숫자만 내려간다.
+     (§10.2 "명예의 전당 숫자는 절대 줄지 않는다"와 같은 원칙)
+
+   --pd  : 판 지름(px). app.js의 applyPlates()가 등급에 따라 찍는다(44~72px).
+   data-lb : 각인 문자열. ::after가 attr()로 읽는다.
+
+   ★ 캡션('총 운동일')은 판 안이 아니라 판 아래에 둔다.
+     안에 넣으면 판이 한글 라벨 폭보다 작아질 수 없어서 지름을 76~100%밖에 못 벌렸고,
+     그 정도로는 등급이 올라도 눈에 안 보였다. 밖으로 빼니 44~72px(1.6배)까지 벌어진다.
+     칸 너비가 아니라 px로 잡는 이유도 같다 — 칸이 넓은 3칸짜리 줄에서 판만 커지면 안 된다.
+   ══════════════════════════════════════════════════════════════ */
+/* 캡션이 아래에 서므로 바닥을 맞춘다 — 판들이 같은 바닥에 놓인 랙처럼 보인다 */
+:root[data-design="hard"] .stats{gap:6px; align-items:flex-end;}
+:root[data-design="hard"] .stats .st{
+  --pd:72px;                               /* JS가 안 돌아도 최대 판으로 보인다 */
+  position:relative;
+  background:none; border:none; padding:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+}
+/* 판 자리 — 흐름 안의 블록이라 .st 높이가 판 + 캡션으로 자동 결정된다.
+   좁은 화면에서는 max-width가 먼저 걸리고 aspect-ratio가 높이를 따라온다. */
+:root[data-design="hard"] .stats .st::before,
+:root[data-design="hard"] .stats .st > b,
+:root[data-design="hard"] .stats .st > span:first-of-type{
+  width:var(--pd); max-width:100%;
+}
+/* 원판 본체 — 림(솟음) · 면(꺼짐) · 허브(솟음) · 구멍을 한 겹에 담았다.
+   빛은 위에서 온다: 위 모서리 하이라이트 / 아래 그늘 / 바닥 그림자. */
+:root[data-design="hard"] .stats .st::before{
+  content:''; display:block; aspect-ratio:1;
+  border-radius:50% 47% 53% 48% / 48% 52% 47% 53%;
+  background:
+    /* 림 ↔ 면의 단차. 작은 원에서는 이 두 겹의 고리가 '원판'을 읽게 하는 유일한 단서라
+       허브·구멍 대신 이걸 남겼다 — 70px 안에 숫자까지 넣으면 가운데는 어차피 가린다. */
+    radial-gradient(circle at 50% 50%, transparent 0 33%, rgba(0,0,0,.55) 35% 38%, transparent 40%),
+    radial-gradient(circle at 50% 50%, transparent 0 40%, rgba(255,255,255,.07) 41% 43%, transparent 45%),
+    radial-gradient(circle at 24% 26%, rgba(138,74,44,.34), transparent 26%),
+    radial-gradient(circle at 76% 70%, rgba(107,64,40,.30), transparent 28%),
+    radial-gradient(circle at 64% 20%, rgba(90,50,30,.26),  transparent 18%),
+    radial-gradient(circle at 26% 76%, rgba(150,84,48,.20), transparent 20%),
+    radial-gradient(circle at 84% 36%, rgba(70,40,26,.30),  transparent 17%),
+    linear-gradient(160deg,#3E4446,#212627 62%,#14181A);
+  box-shadow:
+    0 5px 11px rgba(0,0,0,.72),
+    inset 0 4px 6px -2px rgba(255,255,255,.14),
+    inset 0 -6px 9px -3px rgba(0,0,0,.90),
+    inset 0 0 0 4px rgba(0,0,0,.30),
+    inset 0 0 13px rgba(0,0,0,.42);
+}
+/* 숫자 — 판 위에 겹쳐 올린다. 판과 같은 크기의 상자를 만들어 가운데 정렬하면
+   판 지름이 바뀌어도 숫자가 따라 움직인다(top을 %로 계산할 필요가 없다). */
+:root[data-design="hard"] .stats .st > b{
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  font-size:calc(var(--pd) * .30); font-weight:900; letter-spacing:-.5px;
+  color:#E7E3DB;
+  text-shadow:0 -1px 0 rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.16), 0 3px 5px rgba(0,0,0,.85);
+}
+:root[data-design="hard"] .stats .st > b.hot{color:#E8785F;}
+/* 각인 — 같은 상자에서 아래쪽 정렬. 림 안쪽에 찍힌다. */
+:root[data-design="hard"] .stats .st::after{
+  content:attr(data-lb);
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:var(--pd); max-width:100%; aspect-ratio:1;
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:8%;
+  font-size:8px; font-weight:800; letter-spacing:1.2px; color:#8A7A6E;
+  text-shadow:0 -1px 0 rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.12);
+}
+/* 캡션 — 판 밖. 여기서부터는 판 크기와 무관하므로 글자를 줄일 이유가 없다. */
+:root[data-design="hard"] .stats .st > span{
+  margin-top:7px; font-size:10px; font-weight:800;
+  letter-spacing:-.2px; white-space:nowrap; color:#A2938A;
+}
+
+/* ── 다음 판까지 — 하드에서만 보인다(기본값은 v2.css에서 display:none) ── */
+:root[data-design="hard"] .platebar{display:block;}

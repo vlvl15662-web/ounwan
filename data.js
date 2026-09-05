@@ -1,6 +1,6 @@
 /* =========================================================
    오운완 앱 - 운동 종목 DB (exercise_db.js)
-   총 132종 | 가슴18 등20 어깨18 이두10 삼두10 하체25 코어15 전신8 유산소8
+   총 132종 | 가슴18 등20 어깨18 이두10 삼두10 하체29 코어16 유산소10 ('전신' 부위는 2026-09-05 폐지 — 8종을 주동근 기준으로 재배치)
    표기 기준: 한국 헬스장 실사용 명칭 (플랜핏/헬스로그/유튜브 통용 표기)
    muscles 그룹: chest, lats, traps, front-delt, side-delt, rear-delt,
                  biceps, triceps, forearm, abs, obliques, quads,
@@ -151,15 +151,15 @@ const EXERCISES = [
   { id: 'bicycle-crunch', nm: '바이시클 크런치', alias: ['자전거 크런치', 'bicycle crunch'], part: '코어', sub: '복사근', eq: '맨몸', lv: 1, sets: 3, reps: 20, unit: 'bw', comp: false, tip: '팔꿈치 대신 어깨로 회전', muscles: { primary: ['obliques'], secondary: ['abs'] } },
   { id: 'hollow-hold', nm: '할로우 홀드', alias: ['할로우바디', 'hollow hold'], part: '코어', sub: '복직근', eq: '맨몸', lv: 2, sets: 3, reps: 30, unit: 'sec', comp: false, tip: '허리 눌러 바나나 자세 유지', muscles: { primary: ['abs'], secondary: ['quads', 'obliques'] } },
 
-  /* ================= 전신 (8) ================= */
-  { id: 'burpee', nm: '버피', alias: ['버피테스트', 'burpee'], part: '전신', sub: '전신·심폐', eq: '맨몸', lv: 2, sets: 4, reps: 15, unit: 'bw', comp: true, tip: '착지 부드럽게, 리듬 유지', muscles: { primary: ['quads', 'chest'], secondary: ['abs', 'front-delt', 'triceps', 'glutes'] } },
-  { id: 'kettlebell-swing', nm: '케틀벨 스윙', alias: ['KB스윙', '케틀벨스윙', 'kettlebell swing'], part: '전신', sub: '후면사슬', eq: '기타', lv: 2, sets: 4, reps: 20, unit: 'kg', comp: true, tip: '팔 아닌 힙 힌지로 튕겨내기', muscles: { primary: ['glutes', 'hamstrings'], secondary: ['abs', 'front-delt', 'traps'] } },
-  { id: 'clean-and-press', nm: '클린 앤 프레스', alias: ['클린앤프레스', 'clean and press'], part: '전신', sub: '전신 파워', eq: '바벨', lv: 3, sets: 4, reps: 6, unit: 'kg', comp: true, tip: '하체 폭발력으로 먼저 올려', muscles: { primary: ['front-delt', 'quads'], secondary: ['traps', 'glutes', 'triceps'] } },
-  { id: 'power-clean', nm: '파워 클린', alias: ['클린', 'power clean'], part: '전신', sub: '전신 파워', eq: '바벨', lv: 3, sets: 5, reps: 3, unit: 'kg', comp: true, tip: '바를 몸에 붙이고 삼중신전', muscles: { primary: ['traps', 'glutes'], secondary: ['quads', 'hamstrings', 'front-delt'] } },
-  { id: 'thruster', nm: '스러스터', alias: ['덤벨 스러스터', 'thruster'], part: '전신', sub: '하체·어깨', eq: '덤벨', lv: 3, sets: 4, reps: 10, unit: 'kg', comp: true, tip: '스쿼트 반동 그대로 머리 위로', muscles: { primary: ['quads', 'front-delt'], secondary: ['glutes', 'triceps', 'abs'] } },
-  { id: 'dumbbell-snatch', nm: '덤벨 스내치', alias: ['스내치', 'dumbbell snatch'], part: '전신', sub: '전신 파워', eq: '덤벨', lv: 3, sets: 5, reps: 5, unit: 'kg', comp: true, tip: '한 번에 머리 위로, 팔꿈치 잠금', muscles: { primary: ['front-delt', 'glutes'], secondary: ['traps', 'quads', 'abs'] } },
-  { id: 'farmers-walk', nm: '파머스 워크', alias: ['파머스캐리', 'farmers walk'], part: '전신', sub: '전완·코어', eq: '덤벨', lv: 2, sets: 3, reps: 40, unit: 'sec', comp: true, tip: '가슴 펴고 어깨 내린 채 걷기', muscles: { primary: ['forearm', 'traps'], secondary: ['abs', 'obliques', 'quads'] } },
-  { id: 'battle-rope', nm: '배틀로프', alias: ['배틀로프 웨이브', 'battle rope'], part: '전신', sub: '전신·심폐', eq: '기타', lv: 2, sets: 4, reps: 30, unit: 'sec', comp: true, tip: '무릎 살짝 굽히고 빠르게 웨이브', muscles: { primary: ['front-delt', 'forearm'], secondary: ['abs', 'quads', 'lats'] } },
+  /* ================= 옛 '전신' 8종 — 주동근 기준으로 재배치 ================= */
+  { id: 'burpee', nm: '버피', alias: ['버피테스트', 'burpee'], part: '유산소', sub: '전신·심폐', eq: '맨몸', lv: 2, sets: 4, reps: 15, unit: 'bw', comp: true, tip: '착지 부드럽게, 리듬 유지', muscles: { primary: ['quads', 'chest'], secondary: ['abs', 'front-delt', 'triceps', 'glutes'] } },
+  { id: 'kettlebell-swing', nm: '케틀벨 스윙', alias: ['KB스윙', '케틀벨스윙', 'kettlebell swing'], part: '하체', sub: '후면사슬', eq: '기타', lv: 2, sets: 4, reps: 20, unit: 'kg', comp: true, tip: '팔 아닌 힙 힌지로 튕겨내기', muscles: { primary: ['glutes', 'hamstrings'], secondary: ['abs', 'front-delt', 'traps'] } },
+  { id: 'clean-and-press', nm: '클린 앤 프레스', alias: ['클린앤프레스', 'clean and press'], part: '어깨', sub: '전신 파워', eq: '바벨', lv: 3, sets: 4, reps: 6, unit: 'kg', comp: true, tip: '하체 폭발력으로 먼저 올려', muscles: { primary: ['front-delt', 'quads'], secondary: ['traps', 'glutes', 'triceps'] } },
+  { id: 'power-clean', nm: '파워 클린', alias: ['클린', 'power clean'], part: '하체', sub: '전신 파워', eq: '바벨', lv: 3, sets: 5, reps: 3, unit: 'kg', comp: true, tip: '바를 몸에 붙이고 삼중신전', muscles: { primary: ['traps', 'glutes'], secondary: ['quads', 'hamstrings', 'front-delt'] } },
+  { id: 'thruster', nm: '스러스터', alias: ['덤벨 스러스터', 'thruster'], part: '하체', sub: '하체·어깨', eq: '덤벨', lv: 3, sets: 4, reps: 10, unit: 'kg', comp: true, tip: '스쿼트 반동 그대로 머리 위로', muscles: { primary: ['quads', 'front-delt'], secondary: ['glutes', 'triceps', 'abs'] } },
+  { id: 'dumbbell-snatch', nm: '덤벨 스내치', alias: ['스내치', 'dumbbell snatch'], part: '어깨', sub: '전신 파워', eq: '덤벨', lv: 3, sets: 5, reps: 5, unit: 'kg', comp: true, tip: '한 번에 머리 위로, 팔꿈치 잠금', muscles: { primary: ['front-delt', 'glutes'], secondary: ['traps', 'quads', 'abs'] } },
+  { id: 'farmers-walk', nm: '파머스 워크', alias: ['파머스캐리', 'farmers walk'], part: '코어', sub: '전완·코어', eq: '덤벨', lv: 2, sets: 3, reps: 40, unit: 'sec', comp: true, tip: '가슴 펴고 어깨 내린 채 걷기', muscles: { primary: ['forearm', 'traps'], secondary: ['abs', 'obliques', 'quads'] } },
+  { id: 'battle-rope', nm: '배틀로프', alias: ['배틀로프 웨이브', 'battle rope'], part: '유산소', sub: '전신·심폐', eq: '기타', lv: 2, sets: 4, reps: 30, unit: 'sec', comp: true, tip: '무릎 살짝 굽히고 빠르게 웨이브', muscles: { primary: ['front-delt', 'forearm'], secondary: ['abs', 'quads', 'lats'] } },
 
   /* ================= 유산소 (8) ================= */
   { id: 'treadmill-run', nm: '트레드밀 러닝', alias: ['러닝머신', '달리기', 'treadmill run'], part: '유산소', sub: '심폐', eq: '머신', lv: 1, sets: 1, reps: 30, unit: 'min', comp: true, tip: '착지는 발 중앙, 상체 세우고', muscles: { primary: ['quads', 'calves'], secondary: ['hamstrings', 'glutes'] } },
@@ -176,6 +176,33 @@ const EXERCISES = [
    분할 프리셋 (요일별 종목 id 5~7개)
    ========================================================= */
 const SPLIT_PRESETS = {
+  /* 헬린이 입문 3분할 — 온보딩 '헬린이로 시작'에서만 쓰인다.
+     세트·횟수가 종목 기본값과 다르므로 {id, sets, reps} 형태로 직접 지정했다
+     (expandPreset이 문자열 id와 객체를 모두 받는다). */
+  rookie: {
+    name: '헬린이에요 !',
+    desc: '처음이라면 이대로만 하세요. 기구 위주라 자세 잡기 쉽고, 3분할이라 회복도 넉넉합니다.',
+    rookie: true,
+    days: [
+      { label: '하체', ex: [
+        { id: 'leg-extension',        sets: 3, reps: 12 },
+        { id: 'lying-leg-curl',       sets: 3, reps: 12 },
+        { id: 'barbell-back-squat',   sets: 3, reps: 15 }
+      ] },
+      { label: 'push(가슴·어깨·삼두)', ex: [
+        { id: 'barbell-bench-press',    sets: 4, reps: 12 },
+        { id: 'dumbbell-shoulder-press',sets: 4, reps: 15 },
+        { id: 'cable-pushdown',         sets: 3, reps: 12 },
+        { id: 'side-lateral-raise',     sets: 5, reps: 15 }
+      ] },
+      { label: 'pull(등·이두)', ex: [
+        { id: 'lat-pulldown',     sets: 4, reps: 15 },
+        { id: 'seated-cable-row', sets: 4, reps: 15 },
+        { id: 'reverse-pec-deck', sets: 4, reps: 20 },   // 후면삼각근
+        { id: 'barbell-curl',     sets: 3, reps: 20 }
+      ] }
+    ]
+  },
   full: {
     name: '무분할(전신)',
     desc: '주 2~3회, 헬린이 입문용 전신 루틴',
@@ -266,7 +293,7 @@ const EX_BY_ID = (function () {
   return m;
 })();
 
-const PARTS = ['가슴', '등', '어깨', '이두', '삼두', '하체', '코어', '전신', '유산소'];
+const PARTS = ['가슴', '등', '어깨', '이두', '삼두', '하체', '코어', '유산소'];
 
 /** 정규화: 공백·기호 제거 + 소문자 */
 function _norm(s) { return String(s || '').toLowerCase().replace(/[\s\-_·()[\]]/g, ''); }
@@ -306,10 +333,16 @@ function expandPreset(key) {
     key, name: p.name, desc: p.desc,
     days: p.days.map(d => ({
       label: d.label,
-      ex: d.ex.map(id => {
+      /* 항목은 문자열 id, 또는 세트·횟수를 덮어쓰는 {id, sets, reps} 둘 다 받는다. */
+      ex: d.ex.map(it => {
+        const id = typeof it === 'string' ? it : it.id;
         const e = EX_BY_ID[id];
         if (!e) return null;
-        return { id: e.id, nm: e.nm, part: e.part, sets: e.sets, reps: e.reps, unit: e.unit };
+        return {
+          id: e.id, nm: e.nm, part: e.part, unit: e.unit,
+          sets: (it && it.sets) || e.sets,
+          reps: (it && it.reps) || e.reps
+        };
       }).filter(Boolean)
     }))
   };

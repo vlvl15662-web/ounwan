@@ -393,19 +393,149 @@ const Engine = {
     ctx.clearRect(0, 0, W, H);
     if (!o.transparent) ctx.drawImage(base, 0, 0);
 
+    /* ── 합성 순서(§8.1 z-order): 사진 → 스크림 → 배지 → 텍스트 → 워터마크 ──
+       워터마크가 템플릿 안 로고를 대체하므로 템플릿 로고는 끈다(§5.3). */
+    const lv = o.transparent ? 1 : judgeBrightness(ctx, W, H, o.fast);
+    if (!o.transparent) applyScrim(ctx, W, H, lv);
+    F.logo = 0;
+
     const K = makeK(ctx, W, H, o, F, base);
+    K.lv = lv;                                   // 템플릿이 플레이트 승급 여부를 알 수 있게
+
     let box;
     if (o.tmpl === 'B') box = drawB(K);
     else if (o.tmpl === 'C') box = drawC(K);
     else if (o.tmpl === 'D') box = drawD(K);
     else box = drawA(K);
 
+    /* 배지는 템플릿이 정한 텍스트 블록 '위'에 놓인다(배지규격 §위치).
+       그리는 순서는 텍스트 다음이지만 영역이 겹치지 않아 §8.1 z-order와 충돌하지 않는다. */
+    if (!o.transparent) drawPartBadge(K, box);
+    if (!o.transparent) drawWatermark(K, lv);
+
     this.lastBox = box || null;
-    this.lastMetrics = Object.assign({ ms: Math.round(performance.now() - t0), W, H },
+    this.lastMetrics = Object.assign({ ms: Math.round(performance.now() - t0), W, H, lv },
       (box && box.metrics) || {});
     return this.lastMetrics;
   }
 };
+
+/* ══════════════════════════════════════════════════════════════
+   §8.1 밝은 사진 가독성 — 2중 방어
+   근거: 오버레이가독성_스트릭회복_명세_v1.2 §1 (QA P-03~P-05 대응)
+   ══════════════════════════════════════════════════════════════ */
+/** 스트릭 표기 — PRD §8.5 대조표: 'N회 연속'. 'D+n'·'N일 연속'은 폐기됐다. */
+function streakLabel(n) { return (n || 0) + '회 연속'; }
+const APP_NAME = '오운완';           // §5.3: 앱명은 상수 1곳만 교체하면 되게 둔다
+
+/** 사진 하단 55% 영역의 평균 밝기(0~1)로 3단계를 정한다.
+    경계값 0.45 / 0.62는 QA 확정치 — 구두 조정 금지, 개정 시 명세표를 갱신한다.
+    판정 실패는 무조건 LV3 폴백(가장 안전한 쪽). */
+function judgeBrightness(ctx, W, H, fast) {
+  if (fast) return 2;                                   // 드래그 중엔 중간값으로 고정 (프레임 예산)
+  try {
+    const y = Math.round(H * 0.45), h = H - y;
+    const L = regionLum(ctx, 0, y, W, h);
+    if (L == null || isNaN(L)) return 3;
+    if (L <= 0.45) return 1;
+    if (L <= 0.62) return 2;
+    return 3;
+  } catch (e) { return 3; }
+}
+
+/** 스크림 — 하단 52%, 항상 적용. LV2·LV3는 같은 강화값을 쓴다(§1 표). */
+function applyScrim(ctx, W, H, lv) {
+  const top = H * 0.48, hh = H - top;
+  const g = ctx.createLinearGradient(0, top, 0, H);
+  const strong = lv >= 2;
+  g.addColorStop(0, 'rgba(10,8,9,0)');
+  g.addColorStop(0.35, strong ? 'rgba(10,8,9,0.48)' : 'rgba(10,8,9,0.38)');
+  g.addColorStop(1, strong ? 'rgba(10,8,9,0.82)' : 'rgba(10,8,9,0.72)');
+  ctx.save(); ctx.fillStyle = g; ctx.fillRect(0, top, W, hh); ctx.restore();
+}
+
+/** 부위 배지 — 확산 엔진. 피드 축소(0.435배)에서도 읽혀야 하므로 크기 하한이 고정이다.
+    근거: 부위배지규격_v1.0 — 높이 96px / 폰트 52px·900 / 좌우 패딩 36px (1080 기준) */
+function drawPartBadge(K, box) {
+  const b = (K.data && K.data.badge) || null;
+  if (!b || !b.main) return;
+  const ctx = K.ctx, u = K.u, P = K.P;
+  const label = b.extra ? `${b.main} 외 ${b.extra}` : b.main;
+  const chips = [{ t: label, main: true }];
+  if (b.sub) chips.push({ t: b.sub, main: false });
+
+  const hBadge = 96 * u, padX = 36 * u, gap = 16 * u;
+  const r = K.badgeRadius != null ? K.badgeRadius * u : 999 * u;
+  /* 좌하단 정렬. 텍스트 블록 바로 위에 얹는다 —
+     박스를 못 받으면(예외) 하단 여백 기준으로 폴백한다. */
+  let x = box && box.x != null ? Math.max(68 * u, box.x) : 68 * u;
+  let y = box && box.y != null ? box.y - hBadge - 20 * u : K.H - 68 * u - hBadge;
+  if (y < 24 * u) y = 24 * u;                       // 사진 위로 벗어나지 않게
+
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  chips.forEach(c => {
+    K.font(52, 900);
+    const tw = ctx.measureText(c.t).width;
+    const w = tw + padX * 2;
+    ctx.beginPath();
+    roundRect(ctx, x, y, w, hBadge, Math.min(r, hBadge / 2));
+    if (c.main) {
+      /* 주 배지 = accent 원색 단색. 그라데이션 금지 — 축소하면 탁해진다. */
+      const acc = P.accent || '#FFFFFF';
+      ctx.fillStyle = acc;
+      ctx.fill();
+      /* 라임 전용 2중 대비안: 밝은 벽에서 배지 '윤곽'이 묻는 문제.
+         명도가 높은 accent일 때만 외곽선 + 드롭섀도를 건다(코랄·라벤더엔 지저분해서 안 넣는다). */
+      if (accentIsBright(acc)) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.22)';
+        ctx.shadowBlur = 16 * u; ctx.shadowOffsetY = 4 * u;
+        ctx.fill();
+        ctx.restore();
+        ctx.lineWidth = 1.5 * u;
+        ctx.strokeStyle = 'rgba(10,13,2,0.28)';
+        ctx.stroke();
+      }
+      /* 배지 위 글자색은 accent 밝기로 자동 결정 — 라임 위 검정 ≈ 15:1 */
+      ctx.fillStyle = accentIsBright(acc) ? '#0A0D02' : '#FFFFFF';
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.20)';
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+    }
+    K.font(52, 900);
+    ctx.fillText(c.t, x + padX, y + hBadge / 2 + 2 * u);
+    x += w + gap;
+  });
+  ctx.restore();
+}
+/** 배지 배경이 흰 벽과 붙어 윤곽이 사라질 만큼 밝은 색인가 (라임 계열) */
+function accentIsBright(hex) {
+  const rgb = hexRGB(hex || '');
+  if (!rgb) return false;
+  return relLum(rgb[0], rgb[1], rgb[2]) > 0.55;
+}
+
+/** 워터마크 — §5.3 조판.
+    "피드에서 크게 읽히면 광고, 확대해야 읽히면 정보."
+    22px / 400 / 자간 +2% / rgba(255,255,255,.62) / 우32 하28 (1080 기준).
+    LV3에서는 크기·굵기를 그대로 두고 불투명도만 .80으로 올린다(플레이트 대신). */
+function drawWatermark(K, lv) {
+  const ctx = K.ctx, u = K.u;
+  const txt = 'made with ' + (K.data && K.data.logo ? K.data.logo : APP_NAME);
+  ctx.save();
+  ctx.textBaseline = 'alphabetic';
+  K.font(22, 400);
+  const track = 22 * 0.02;                       // 자간 +2%
+  const w = K.trackedW(txt, track);
+  const x = K.W - 32 * u - w, y = K.H - 28 * u;
+  ctx.shadowColor = 'rgba(0,0,0,0.45)';
+  ctx.shadowBlur = 3 * u; ctx.shadowOffsetY = 1 * u;
+  ctx.fillStyle = `rgba(255,255,255,${lv >= 3 ? 0.80 : 0.62})`;
+  K.tracked(txt, x, y, track);
+  ctx.restore();
+}
 
 /** 렌더 컨텍스트 헬퍼.
     u(명세 px → 실제 px 배율)는 프로퍼티다 — 레이아웃이 넘칠 때 템플릿이 직접 줄인다. */
@@ -574,7 +704,7 @@ function drawA(K) {
     /* 우측 D+n 자리를 먼저 확보하고, 남는 폭 안에서 로고·볼륨을 배치한다 */
     let streakW = 0, streakTxt = '';
     if (F.streak) {
-      streakTxt = 'D+' + (data.streak || 0);
+      streakTxt = streakLabel(data.streak);
       K.fitFont(streakTxt, 31, 800, innerW * 0.4, 18);
       streakW = K.w(streakTxt) + 18 * K.u;
     }
@@ -784,7 +914,7 @@ function drawB(K) {
   if (F.vol && data.vol) foot.push(fmtVol(data.vol));
   if (F.volfun && data.vol) { const vf = volFun(data.vol); if (vf) foot.push(vf); }
   if (F.dur && data.dur) foot.push(fmtDur(data.dur));
-  if (F.streak) foot.push('D+' + (data.streak || 0));
+  if (F.streak) foot.push(streakLabel(data.streak));
   if (foot.length) {
     /* 요약 줄은 캔버스 바닥이 아니라 종목 목록 바로 아래에 붙인다 — 글자를 줄여도 한 덩어리로 보이게.
        (footY는 위에서 "몇 줄까지 들어가나"를 계산하는 상한으로만 쓴다) */
@@ -820,7 +950,7 @@ function drawC(K) {
   if (F.vol && data.vol) subParts.push(fmtVol(data.vol));
   if (F.volfun && data.vol) { const vf = volFun(data.vol); if (vf) subParts.push(vf); }
   if (F.dur && data.dur) subParts.push(fmtDur(data.dur));
-  if (F.streak) subParts.push('D+' + (data.streak || 0));
+  if (F.streak) subParts.push(streakLabel(data.streak));
   let sub = subParts.join(' · ');
   K.font(31, 600);
   const maxW = W - m * 2 - padX * 2;
@@ -939,7 +1069,7 @@ function drawD(K) {
   if (F.streak) {
     K.font(34, 800);
     ctx.fillStyle = o.tone === 'accent' ? P.accent : fg;
-    const t = 'D+' + (data.streak || 0);
+    const t = streakLabel(data.streak);
     ctx.fillText(t, W - pad - K.w(t), ty);
   }
   ctx.fillStyle = rule;
@@ -1025,7 +1155,7 @@ g.OW = g.OW || {};
 Object.assign(g.OW, {
   Overlay: Engine,
   ensureFonts, loadOriented, detectAutoRotate, readOrientation,
-  LEVELS, FIELD_LABELS, levelFields, palette, blurSupported,
+  LEVELS, FIELD_LABELS, levelFields, palette, blurSupported, APP_NAME,
   overlayToBlob: toBlob, makeThumb, fmtVol, fmtDur, volFun,
   contrastRatio, relLum, regionLum
 });
