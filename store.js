@@ -207,6 +207,12 @@ function doneSetCount(log) {
   log.ex.forEach(e => (e.sets || []).forEach(s => { if (s.done) n++; }));
   return n;
 }
+/** 사용자가 손으로 값을 넣은 종목인가 — 체크했거나(done), 무게·횟수를 직접 친(t) 세트가 있으면 참.
+    프리필·＋세트가 채워 넣은 값은 `t`가 없어 여기 걸리지 않는다.
+    근거: 코드진단서 P2 "kg만 적고 체크 안 한 종목이 확인 없이 사라짐". */
+function hasUserInput(e) {
+  return !!e && (e.sets || []).some(s => s.done || s.t);
+}
 function doneExCount(log) {
   if (!log || !log.ex) return 0;
   return log.ex.filter(e => (e.sets || []).some(s => s.done)).length;
@@ -284,10 +290,31 @@ function streakUpTo(dateKey) {
   return n;
 }
 
+/* 최장 스트릭 캐시 — P2. 화면을 그릴 때마다 첫 기록일부터 오늘까지 하루씩 훑던 것을
+   같은 입력이면 한 번만 계산하도록 바꾼다(홈 렌더 1회에 streakBest가 여러 번 불린다).
+
+   ★ 캐시 무효화를 save()에 걸지 않는 이유: 검증 스위트처럼 S.logs를 직접 고치는 경로가 있어
+     저장을 거치지 않는 변경을 놓친다. 대신 결과를 좌우하는 값만으로 서명을 만든다.
+     서명 계산은 로그 개수에 비례(O(logs))하고, 원래 계산은 첫 기록일~오늘의 날짜 수에
+     비례(최대 4000회)하므로 기록이 쌓일수록 이득이 커진다. */
+let sbCache = null;
+function streakSig(keys) {
+  /* 날짜 목록 전체를 문자열로 잇지 않고 체크섬으로 접는다 — 기록이 수천 일이 돼도
+     매 호출마다 수십 KB 문자열을 만들지 않기 위해서. 중간 날짜 하나가 바뀌어도 값이 달라진다. */
+  let sum = 0;
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    for (let j = 0; j < k.length; j++) sum = (sum * 31 + k.charCodeAt(j)) | 0;
+  }
+  return keys.length + '|' + sum + '|' + today() + '|' +
+    (S.dows || []).join(',') + '|' + (S.routine || []).length;
+}
 /** 최장 스트릭(회) — 명예의 전당용. 기록 전체를 훑어 파생 계산하며 신규 상태값이 없다. */
 function streakBest() {
   const keys = Object.keys(S.logs).filter(k => isWorkoutDay(S.logs[k])).sort();
-  if (!keys.length) return 0;
+  if (!keys.length) { sbCache = null; return 0; }
+  const sig = streakSig(keys);
+  if (sbCache && sbCache.sig === sig) return sbCache.v;
   let d = parseKey(keys[0]); d.setHours(0, 0, 0, 0);
   const end = new Date(); end.setHours(0, 0, 0, 0);
   let cur = 0, best = 0, guard = 0;
@@ -298,7 +325,9 @@ function streakBest() {
     }
     d = addDays(d, 1);
   }
-  return Math.max(best, streak());
+  const v = Math.max(best, streak());
+  sbCache = { sig, v };
+  return v;
 }
 
 /** 다음 목표 = 최고 기록 + 1회. 단 기록이 빈약하면(3 미만) 최소 목표 3회. */
@@ -553,7 +582,10 @@ function pruneEmptyLogs() {
   Object.keys(S.logs).forEach(k => {
     if (k >= t) return;
     const L = S.logs[k];
-    if (!isWorkoutDay(L)) { delete S.logs[k]; }
+    /* isWorkoutDay는 '체크한 세트 또는 사진'만 본다. 무게만 적어둔 날은 그 기준으로는 빈 날이지만
+       사용자에게는 적어둔 기록이 있는 날이다 — 앱을 껐다 켜면 조용히 사라지던 결함(P2, 2026-09-08).
+       하루가 지난 뒤이므로 이월은 하지 않되, 지우지도 않는다. */
+    if (!isWorkoutDay(L) && !(L.ex || []).some(hasUserInput)) { delete S.logs[k]; }
     /* 종료를 안 누르고 넘어간 세션 — 시작 시각 기준 2시간으로 닫는다.
        그날 자정 기준으로 닫으면 저녁 운동의 종료가 시작보다 앞서 시간이 0분이 된다. */
     else if (!L.end && L.start) { L.end = L.start + 2 * 3600 * 1000; }
@@ -653,7 +685,7 @@ function validateState(st) {
       /* 세트·지난 기록 값은 HTML 속성(value="…")에 그대로 들어간다 — 숫자로 강제해야 조작된 백업이 스크립트가 못 된다 */
       e.sets = e.sets.filter(s => s && typeof s === 'object').map(s => ({
         kg: (s.kg === '' || s.kg == null) ? '' : (Number(s.kg) || 0), reps: Number(s.reps) || 0,
-        done: !!s.done, warm: !!s.warm
+        done: !!s.done, warm: !!s.warm, t: !!s.t
       }));
       if (e.prev) e.prev = { kg: Number(e.prev.kg) || 0, reps: Number(e.prev.reps) || 0, date: String(e.prev.date || '').slice(0, 10) };
       if (e.rest != null) e.rest = Number(e.rest) || 0;
@@ -764,21 +796,29 @@ Object.defineProperty(g.OW, 'S', {
   set(v) { replaceState(v); },
   enumerable: true, configurable: true
 });
+/* 공개 API — 앱·검증 스위트가 실제로 부르는 것만 둔다(P2 "미사용 공개 API 정리").
+   2026-09-08에 아무도 호출하지 않던 11개를 뺐다:
+     DEFAULT_PREFS, replaceState, blobURL, dropURL, dropAllURLs, thumbCache,
+     doneExCount, isScheduled, PLATE_TIERS, deepClean, blobToDataURL
+   함수·상수 자체는 store.js 안에 그대로 있고 내부에서 계속 쓰인다 — 밖으로 내보내지만 않을 뿐이다.
+   (doneExCount만은 내부에서도 호출처가 없다. 지우지 않은 이유는 fullDoneExCount와 짝이라
+    나중에 "완료 종목 수" 표시를 되살릴 때 다시 필요해질 수 있어서다.)
+   되살리려면 아래 목록에 이름 한 개를 다시 적으면 된다. */
 Object.assign(g.OW, {
-  DEFAULT_PREFS, BLANK, LS_KEY, replaceState,
+  BLANK, LS_KEY,
   save, load, clone, migrate,
   pad, dkey, today, parseKey, addDays, DOW,
-  Photos, blobURL, dropURL, dropAllURLs, dropPhotoCache, thumbURL, thumbCache,
-  isWorkoutDay, doneSetCount, doneExCount, fullDoneExCount, doneExercises,
+  Photos, dropPhotoCache, thumbURL,
+  isWorkoutDay, doneSetCount, hasUserInput, fullDoneExCount, doneExercises,
   volumeOf, durationOf, streak, streakForPhoto, totalDays, weekDays, monthStats,
-  isScheduled, streakUpTo, streakBest, nextGoal, daysTogether, hallOfFame, lastMissedDay,
+  streakUpTo, streakBest, nextGoal, daysTogether, hallOfFame, lastMissedDay,
   partCounts, badgeParts,
-  PLATE_TIERS, plateTier, plateNext,
+  plateTier, plateNext,
   e1rm, updatePR, rebuildPR, prList,
   isRestDay, routineDay, dayVariant, hasVariant2, pickVariant, markVariantDone, ensureLog, prefill, pruneEmptyLogs,
-  exportBackup, exportBackupBlob, importBackup, validateState, deepClean,
+  exportBackup, exportBackupBlob, importBackup, validateState,
   storageInfo, purgeOldPhotos,
-  blobToDataURL, dataURLToBlob
+  dataURLToBlob
 });
 
 })(window);

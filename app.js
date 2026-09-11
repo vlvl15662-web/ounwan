@@ -389,9 +389,11 @@ $('obNext').onclick = () => {
   S.routine = p.days.map(d => ({ label: d.label, ex: d.ex.slice() }));
   S.dayIdx = 0; S.onboarded = true;
   if (!S.createdAt) S.createdAt = Date.now();
-  // 오늘 로그가 이미 있으면 새 루틴을 반영해 다시 만든다 (아직 세트 안 했을 때만)
+  // 오늘 로그가 이미 있으면 새 루틴을 반영해 다시 만든다 (아직 손대지 않았을 때만)
+  /* doneSetCount가 아니라 hasUserInput으로 본다 — 체크는 안 했지만 무게를 적어둔 종목도
+     '손댄 기록'이다. 예전에는 이 줄이 그것을 확인 없이 통째로 지웠다(P2, 2026-09-08). */
   const k = curKey(), L = S.logs[k];
-  if (L && OW.doneSetCount(L) === 0 && !(L.photos || []).length) delete S.logs[k];
+  if (L && !(L.ex || []).some(e => OW.hasUserInput(e)) && !(L.photos || []).length) delete S.logs[k];
   OW.save(true);
   $('mOnboard').classList.remove('on');
   toast('루틴이 준비됐습니다', 'ok');
@@ -662,7 +664,15 @@ function exCard(L, e, i) {
     if (!isTime) swipeToDelete(row, () => deleteSet(L, e, sets, si));
     row.querySelectorAll('input').forEach(inp => {
       inp.onfocus = () => inp.select();
-      inp.oninput = () => { s[inp.dataset.f] = inp.value === '' ? '' : +inp.value; OW.save(); renderProgress(L); };
+      inp.oninput = () => {
+        s[inp.dataset.f] = inp.value === '' ? '' : +inp.value;
+        /* '사용자가 직접 친 값'이라는 표시. 프리필·＋세트로 채워진 값과 구분하기 위한 것이며,
+           이 표시가 있으면 루틴 동기화·부위 변경이 확인 없이 지우지 않는다(P2).
+           값을 도로 비우면 표시도 지운다 — 빈 칸을 지켜주는 것은 의미가 없다. */
+        if (inp.value === '') { if (!(+s.kg > 0) && !(+s.reps > 0)) s.t = false; }
+        else s.t = true;
+        OW.save(); renderProgress(L);
+      };
       inp.onblur = () => { renderExHeadMeta(L); };
     });
     row.querySelector('[data-act=done]').onclick = () => {
@@ -1156,8 +1166,10 @@ async function swapToDay(pick) {
   const k = curKey();
   const cur = S.logs[k];
   if (cur && cur.dayIdx === pick) { S.dayIdx = pick; OW.save(); return true; }   // 이미 그 부위 — 기록을 건드릴 이유가 없다
-  if (cur && (OW.doneSetCount(cur) > 0 || cur.start || (cur.ex || []).some(e => e.note))) {
-    if (!await confirmBox('오늘 기록을 버릴까요?', '체크한 세트가 모두 사라집니다.', '버리고 변경')) return false;
+  /* 확인 조건에 hasUserInput을 넣는다 — 체크는 안 했지만 kg·횟수를 적어둔 종목도 '버리는 것'이다(P2) */
+  const typed = cur && (cur.ex || []).some(e => OW.hasUserInput(e));
+  if (cur && (typed || cur.start || (cur.ex || []).some(e => e.note))) {
+    if (!await confirmBox('오늘 기록을 버릴까요?', '적어둔 무게·횟수와 체크한 세트가 모두 사라집니다.', '버리고 변경')) return false;
   }
   if (cur && (cur.photos || []).length) {         // 사진이 있으면 로그는 유지하고 종목만 교체
     const day = OW.routineDay(pick);
@@ -1184,8 +1196,9 @@ async function swapVariant(v) {
   const L = todayLog();
   const day = OW.routineDay(L.dayIdx);
   if (!OW.hasVariant2(day) || L.variant === v) return false;
-  if ((OW.doneSetCount(L) > 0 || L.start) &&
-      !await confirmBox(`${v === 1 ? '2안' : '1안'}으로 바꿀까요?`, '체크한 세트가 모두 사라집니다.', '바꾸기')) return false;
+  /* 여기도 hasUserInput — 적어둔 무게가 있으면 확인을 받는다(P2) */
+  if (((L.ex || []).some(e => OW.hasUserInput(e)) || L.start) &&
+      !await confirmBox(`${v === 1 ? '2안' : '1안'}으로 바꿀까요?`, '적어둔 무게·횟수와 체크한 세트가 모두 사라집니다.', '바꾸기')) return false;
   L.variant = v; L.hidden = [];
   L.ex = OW.dayVariant(day, v).map(newLogEx);
   OW.prefill(L);
@@ -1355,7 +1368,9 @@ function syncTodayWithRoutine() {
   });
   const inRoutine = new Set(plan.map(r => r.id));
   L.ex.forEach(e => {
-    if (!inRoutine.has(e.id) && (e.adhoc || (e.sets || []).some(s => s.done))) next.push(e);
+    /* hasUserInput: 체크한 세트뿐 아니라 kg·횟수만 직접 친 종목도 남긴다.
+       예전에는 done만 봐서, 무게를 적어놓고 체크를 안 한 종목이 루틴 편집 한 번에 조용히 사라졌다(P2). */
+    if (!inRoutine.has(e.id) && (e.adhoc || OW.hasUserInput(e))) next.push(e);
   });
   L.ex = next; L.label = day.label;
   OW.prefill(L); OW.save(true);
