@@ -1,6 +1,6 @@
 /* sw.js — 오프라인 동작 (PRD 비기능: F1~F4 전부 네트워크 없이)
    file:// 로 열면 등록되지 않습니다. 서버(또는 스토어 래핑)에서만 활성화됩니다. */
-const CACHE = 'owwan-v1.0.22';
+const CACHE = 'owwan-v1.0.24';
 /* 처음 설치 때 통째로 받아두는 파일 — 하나라도 빠지면 오프라인 첫 실행이 깨진다 (native.js 누락 시 앱 전체 정지) */
 const ASSETS = ['./', './index.html', './styles.css', './themes2.css', './v2.css', './native.js', './data.js', './demo.js', './store.js', './overlay.js', './app.js',
   './manifest.webmanifest', './icon.svg', './icon-192.png',

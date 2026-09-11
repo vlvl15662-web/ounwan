@@ -244,6 +244,8 @@ function go(pg) {
   if (pg === 'set') { renderSettings(); renderHallOfFame(); }
   if (pg === 'cam') enterCamera();
   window.scrollTo({ top: 0, behavior: 'instant' });
+  /* 페이지 이동도 뒤로가기 대상이다 — 가짜 방문기록을 맞춘다(아이폰 피드백 2026-09-12) */
+  if (typeof syncBackGuard === 'function') syncBackGuard();
 }
 $$('nav .tab').forEach(b => b.onclick = () => go(b.dataset.pg));
 $('fabCam').onclick = () => go('cam');
@@ -274,6 +276,7 @@ function openOnboard() {
 }
 function renderOb() {
   const flow = obFlow(), at = Math.max(0, flow.indexOf(obStep));
+  if (typeof syncObClose === 'function') syncObClose();   // ✕는 이미 온보딩을 끝낸 뒤에만 보인다
   $('obSub').textContent = obDowsOnly ? '요일만 바꿉니다. 루틴은 그대로 둡니다.' : `${at + 1}/${flow.length} 단계 · 나중에 언제든 바꿀 수 있습니다.`;
   $('obStep0').style.display = obStep === 0 ? 'block' : 'none';
   $('obStep1').style.display = obStep === 1 ? 'block' : 'none';
@@ -1243,32 +1246,36 @@ function openPicker(target) {
   renderPk();
   setTimeout(() => $('pkSearch').focus(), 120);
 }
+/** '"○○" 직접 추가' 버튼 하나를 만들어 돌려준다.
+    왜 함수로 뽑았나: 검색 결과가 0건일 때와 1건 이상일 때 두 곳에서 같은 버튼을 쓴다
+    (아이폰 피드백 2026-09-12 "원하는 종목을 직접 추가하고 싶은데 못 하겠다" — 예전엔 0건일 때만 만들어져
+     "런지"처럼 비슷한 기본 종목이 하나라도 걸리면 버튼에 영원히 도달할 수 없었다). */
+function makeCustomAddButton(clean) {
+  const b = document.createElement('button');
+  b.className = 'btn ghost block-sm pk-custom';
+  b.textContent = `"${clean}" 직접 추가`;
+  b.onclick = async () => {
+    if (!clean) return toast('종목 이름을 확인해 주세요', 'bad');
+    /* 부위를 물어본다 — 부위 없이 넣으면 통계의 부위별 볼륨이 틀어진다.
+       검색창에서 부위 필터를 골라뒀으면 그게 기본 선택 */
+    const part = await choiceBox(`"${clean}" 부위 선택`, '통계 · 휴식시간 기본값에 쓰입니다.',
+      D.PARTS.map(p => ({ v: p, t: p })), pkPart);
+    if (!part) return;
+    const isCardio = part === '유산소';
+    /* id를 Date.now()로 발급하면 같은 종목을 다시 추가할 때마다 다른 종목이 된다.
+       → 지난 무게 프리필도, PR 누적도 영원히 동작하지 않는다. 이름으로 고정한다. */
+    pkPicked.push({ id: customId(clean), nm: clean, part, sets: isCardio ? 1 : 3, reps: isCardio ? 30 : 10, unit: isCardio ? 'min' : 'kg' });
+    commitPicker();
+  };
+  return b;
+}
 function renderPk() {
   const q = $('pkSearch').value.trim();
   const res = D.searchExercises(q, pkPart, 80);
   const box = $('pkResults'); box.innerHTML = '';
   if (!res.length) {
     box.innerHTML = `<div class="empty"><p>검색 결과가 없습니다</p><small>직접 만든 이름으로 추가하려면 아래 버튼을 누르세요.</small></div>`;
-    if (q) {
-      const b = document.createElement('button');
-      b.className = 'btn ghost block-sm';
-      const clean = cleanExName(q);
-      b.textContent = `"${clean}" 직접 추가`;
-      b.onclick = async () => {
-        if (!clean) return toast('종목 이름을 확인해 주세요', 'bad');
-        /* 부위를 물어본다 — 부위 없이 넣으면 통계의 부위별 볼륨이 틀어진다.
-           검색창에서 부위 필터를 골라뒀으면 그게 기본 선택 */
-        const part = await choiceBox(`"${clean}" 부위 선택`, '통계 · 휴식시간 기본값에 쓰입니다.',
-          D.PARTS.map(p => ({ v: p, t: p })), pkPart);
-        if (!part) return;
-        const isCardio = part === '유산소';
-        /* id를 Date.now()로 발급하면 같은 종목을 다시 추가할 때마다 다른 종목이 된다.
-           → 지난 무게 프리필도, PR 누적도 영원히 동작하지 않는다. 이름으로 고정한다. */
-        pkPicked.push({ id: customId(clean), nm: clean, part, sets: isCardio ? 1 : 3, reps: isCardio ? 30 : 10, unit: isCardio ? 'min' : 'kg' });
-        commitPicker();
-      };
-      box.appendChild(b);
-    }
+    if (q) box.appendChild(makeCustomAddButton(cleanExName(q)));
     return;
   }
   res.forEach(e => {
@@ -1285,6 +1292,9 @@ function renderPk() {
     };
     box.appendChild(b);
   });
+  /* 결과가 있어도 맨 아래에 '직접 추가'를 붙인다 — 맨 위에 두면 기존 종목 고르기를 방해한다.
+     (아이폰 피드백 2026-09-12) */
+  if (q) box.appendChild(makeCustomAddButton(cleanExName(q)));
   $('pkCount').textContent = pkPicked.length ? `(${pkPicked.length})` : '';
 }
 $('pkSearch').oninput = renderPk;
@@ -2824,6 +2834,77 @@ async function onBack() {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') onBack(); });
 
+/* ══ 모달 헤더의 ✕ 닫기 버튼 — 아이폰 피드백 2026-09-12 "뒤로가기 버튼이 없다" ══
+   아이폰 PWA에는 브라우저 뒤로가기가 없어 모달을 나갈 눈에 보이는 수단이 필요하다.
+   classList.remove('on')로 직접 닫지 않고 closeModalEl을 쓴다 — 루틴 편집은 저장 처리가 필요하다.
+   선택을 강제하는 mConfirm·mChoice·mStep에는 붙이지 않는다(이미 '취소'가 있고, 임의로 닫히면
+   호출부가 응답을 못 받는다). */
+$$('.modal [data-close]').forEach(b => {
+  b.onclick = () => {
+    const m = b.closest('.modal');
+    if (m) closeModalEl(m);
+  };
+});
+/** 온보딩은 "아직 한 번도 안 끝낸" 상태에서 닫으면 빈 앱만 남는다 — 그때만 ✕를 숨긴다.
+    (마이 → 분할 다시 설정으로 다시 열었을 때는 닫을 수 있어야 한다) */
+function syncObClose() {
+  const b = $('obClose'); if (!b) return;
+  b.style.display = (S.onboarded && S.routine.length) ? '' : 'none';
+}
+
+/* ══ 아이폰(PWA standalone) 뒤로가기 지원 — 아이폰 피드백 2026-09-12 "뒤로가기 버튼이 없다" ══
+   홈 화면에 추가한 웹앱에는 사파리 주소창·뒤로가기 버튼이 없고, 방문기록이 없으면 가장자리
+   스와이프도 동작하지 않는다. 물리 키보드가 없으니 Escape도 못 쓴다.
+   → 닫을 것이 있는 동안 가짜 방문기록을 1개만 쌓아두고, popstate가 오면 onBack()으로 하나 닫는다.
+   안드로이드 네이티브(NATIVE.on)는 하드웨어 뒤로가기가 이미 onBack을 부르므로 켜지 않는다
+   (둘 다 켜면 한 번에 두 칸씩 닫힌다).
+
+   ⚠ 상수가 아니라 함수다 — Capacitor 브리지는 index.html의 <script> 태그가 아니라 WebView의
+   JSInjector가 런타임에 주입한다. 주입이 이 파일 실행보다 한 순간이라도 늦으면 로드 시점에
+   고정한 값은 안드로이드에서도 true로 굳어, 하드웨어 뒤로가기와 popstate가 둘 다 돌아
+   한 번에 두 칸씩 닫힌다. 쓸 때마다 다시 본다(호출 비용은 window 속성 조회 1회). */
+const WEBBACK = () => !NATIVE.on;
+let backGuard = false;     // 우리가 쌓아둔 가짜 기록이 지금 있는가
+let backPopping = false;   // 우리가 정리하려고 history.back()을 부른 중인가 (무한 루프 방지)
+/** onBack()이 닫을 것이 하나라도 있는가 — onBack의 분기와 같은 순서로 본다 */
+function canGoBack() {
+  if (topModal()) return true;
+  if ($('celebrate').classList.contains('on')) return true;
+  if ($('timerPanel').classList.contains('on')) return true;
+  if (curPage === 'cam' && hasShot) return true;
+  return curPage !== 'today';
+}
+/** 가짜 기록을 "닫을 것이 있으면 딱 1개" 상태로 맞춘다.
+    1개만 유지하므로 뒤로가기 한 번 = 화면 하나 닫힘이 항상 성립한다.
+    X 버튼으로 직접 닫아 닫을 것이 없어지면 쌓아둔 기록을 되감아 정리한다. */
+function syncBackGuard() {
+  if (!WEBBACK() || backPopping) return;
+  const need = canGoBack();
+  if (need && !backGuard) {
+    try { history.pushState({ ow: 1 }, ''); backGuard = true; } catch (e) {}
+  } else if (!need && backGuard) {
+    backGuard = false; backPopping = true;
+    try { history.back(); } catch (e) { backPopping = false; }
+  }
+}
+window.addEventListener('popstate', () => {
+  if (!WEBBACK()) return;
+  if (backPopping) { backPopping = false; return; }   // 우리가 부른 되감기 — 여기서 멈춘다
+  backGuard = false;
+  onBack();
+  /* 아직 닫을 것이 남았으면(모달 위에 모달) 기록을 다시 쌓는다.
+     닫을 것이 없으면 쌓지 않으므로 다음 뒤로가기에 앱을 나가게 된다. */
+  setTimeout(syncBackGuard, 0);
+});
+/* 감시기는 조건 없이 등록한다 — 로드 시점에 한 번 판정해 return하면 그 판정이 영원히 굳는다.
+   실제 동작은 syncBackGuard()가 매번 WEBBACK()을 다시 보고 첫 줄에서 막으므로,
+   안드로이드에서 감시기가 돌아도 아무 일도 일어나지 않는다(부작용 없는 no-op). */
+(function watchBackTargets() {
+  const obs = new MutationObserver(() => setTimeout(syncBackGuard, 0));
+  $$('.modal').forEach(m => obs.observe(m, { attributes: true, attributeFilter: ['class'] }));
+  [$('celebrate'), $('timerPanel')].forEach(el => el && obs.observe(el, { attributes: true, attributeFilter: ['class'] }));
+})();
+
 /* ══════════════════ 부팅 ══════════════════ */
 function boot() {
   applyPrefs();
@@ -2864,6 +2945,8 @@ g.OWAPP = { go, renderToday, renderCal, renderStats, toast, S: () => S,
         setViewDate: k => { viewDate = k; }, viewDate: () => viewDate, showDay,
         restFor, setExRest, saveNoPhoto, restTotal: () => restTotal,
         rollDay, curKey, setLastDay: k => { lastDay = k; },
-        swapToDay, swapVariant, openRoutineEditor, overlayData, touchSession } };
+        swapToDay, swapVariant, openRoutineEditor, overlayData, touchSession,
+        canGoBack, syncBackGuard, makeCustomAddButton, renderPk,
+        backGuard: () => backGuard } };
 
 })(window);
