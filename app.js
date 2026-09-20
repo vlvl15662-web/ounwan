@@ -3229,6 +3229,52 @@ function boot() {
   if (!NATIVE.on && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+  initPwaInstall();
+}
+
+/* 안드로이드/웹 브라우저 PWA 홈 화면 추가 지원 */
+let deferredInstallPrompt = null;
+function initPwaInstall() {
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const card = $('cardInstallApp');
+  const btn = $('btnInstallPwa');
+  if (!card || !btn) return;
+
+  if (!NATIVE.on && !isStandalone()) {
+    card.style.display = '';
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!NATIVE.on && !isStandalone()) card.style.display = '';
+  });
+
+  btn.addEventListener('click', async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      try {
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          card.style.display = 'none';
+          toast('오운완 앱이 홈 화면에 추가되었습니다');
+        }
+      } catch (_) {}
+      deferredInstallPrompt = null;
+    } else {
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      if (isIos) {
+        toast('Safari 하단 공유(↑) 버튼 → [홈 화면에 추가]를 눌러주세요');
+      } else {
+        toast('브라우저 우측 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]를 눌러주세요');
+      }
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    card.style.display = 'none';
+    deferredInstallPrompt = null;
+  });
 }
 /** 마지막 운동일의 dayIdx + 1 을 오늘의 시작 인덱스로 삼는다.
     v0.2는 사진 저장 때마다 dayIdx를 올려 하루 두 장 저장하면 분할이 두 칸 밀렸음. */
