@@ -108,7 +108,7 @@
   </div>
 </section>
 
-<!-- ══════════════════ 2. 기록 (화면5 — 캘린더 + 부위별 운동 횟수) ══════════════════ -->
+<!-- ══════════════════ 2. 캘린더 (화면5 — 캘린더 + 부위별 운동 횟수) ══════════════════ -->
 <section class="page" id="pg-cal">
   <div class="stats">
     <div class="st"><b id="calMonthDays">0</b><span>이달 운동</span></div>
@@ -122,6 +122,7 @@
       <b id="calTitle">—</b>
       <button class="nav" id="calNext" aria-label="다음 달">›</button>
       <button class="nav" id="calModeBtn" aria-label="캘린더 표시 방식">▦</button>
+      <button class="nav" id="calDownloadBtn" aria-label="9:16 SNS 공유용 달력 다운로드" title="달력 다운로드">⤓</button>
     </div>
     <div class="cal-grid" id="calGrid" role="grid" aria-label="월간 운동 기록"></div>
     <div class="cal-legend">
@@ -129,6 +130,7 @@
       <span><i style="background:var(--ac-dim); border:1px solid var(--ac);"></i>운동만</span>
       <span><i style="background:#222; border:1px solid #2E2E2E;"></i>쉼</span>
     </div>
+    <button class="btn block-sm" id="btnCalDownload" style="margin-top:12px;">📸 9:16 SNS 공유용 달력 다운로드</button>
   </div>
 
   <!-- 화면5 하단 — 부위별 운동 '횟수'(회). 볼륨이 아니다(§8.5 MVP 원칙) -->
@@ -428,7 +430,7 @@
   <div class="card">
     <h2>정보</h2>
     <div class="sub">
-      오운완 v1.0.26 · 로컬 저장 전용<br>
+      오운완 v1.0.28 · 로컬 저장 전용<br>
       근거 문서: PRD v1.0 / DEC-001~005 / CR-2026-08-25 / 디자인 수치명세표 v1.0
     </div>
     <div class="divider"></div>
@@ -458,7 +460,7 @@
     </button>
   </span>
   <button class="tab" data-pg="cal">
-    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>기록
+    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>캘린더
   </button>
   <button class="tab" data-pg="set">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0115 0"/></svg>마이

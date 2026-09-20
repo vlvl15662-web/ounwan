@@ -231,8 +231,8 @@ function go(pg) {
     const L = S.logs[curKey()];
     if (L && L.start && !L.end) { L.end = Date.now(); OW.save(); renderSession(L); }
   }
-  /* 화면 4·5·6 명세의 5탭 구성: 홈 / 루틴 / 오운완 / 기록 / 마이 */
-  const titles = { today: '홈', rt: '루틴', feed: '피드', cal: '기록', cam: '오운완 남기기', stat: '통계', set: '마이' };
+  /* 화면 4·5·6 명세의 5탭 구성: 홈 / 루틴 / 피드 / 캘린더 / 마이 */
+  const titles = { today: '홈', rt: '루틴', feed: '피드', cal: '캘린더', cam: '오운완 남기기', stat: '통계', set: '마이' };
   let title = titles[pg] || '득근샷';
   if (viewDate) { const d = OW.parseKey(viewDate); title = `${d.getMonth() + 1}/${d.getDate()} ` + (pg === 'cam' ? '오운완 남기기' : '기록 수정'); }
   $('barTitle').textContent = title;
@@ -1526,6 +1526,310 @@ $('calModeBtn').onclick = () => {
   OW.save(); renderCal();
   toast(S.prefs.calType === 'A' ? '사진 달력 (A타입)' : '아이콘 달력 (C타입)');
 };
+if ($('calDownloadBtn')) $('calDownloadBtn').onclick = () => downloadCalImage(calY, calM);
+if ($('btnCalDownload')) $('btnCalDownload').onclick = () => downloadCalImage(calY, calM);
+
+/* ───── 9:16 SNS 공유용 고화질 달력 다운로드 ───── */
+let calDownloading = false;
+function drawRoundRect(ctx, x, y, w, h, r) {
+  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function loadBlobImage(blob) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img fail')); };
+    img.src = url;
+  });
+}
+
+async function downloadCalImage(y, m) {
+  if (calDownloading) return;
+  calDownloading = true;
+  toast('9:16 SNS 공유용 달력 생성 중...');
+  try {
+    const W = 1080, H = 1920;
+    const cvs = document.createElement('canvas');
+    cvs.width = W; cvs.height = H;
+    const ctx = cvs.getContext('2d');
+
+    // 1. 프리미엄 다크 그라데이션 배경
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+    bgGrad.addColorStop(0, '#0E0E12');
+    bgGrad.addColorStop(0.4, '#14141A');
+    bgGrad.addColorStop(1, '#0B0B0E');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // 은은한 포인트 글로우 효과
+    const glow = ctx.createRadialGradient(W * 0.25, 200, 20, W * 0.25, 200, 480);
+    glow.addColorStop(0, 'rgba(200, 255, 77, 0.09)');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    // 2. 상단 브랜딩 & 날짜 헤더
+    ctx.textBaseline = 'top';
+    ctx.font = '900 24px Pretendard, sans-serif';
+    ctx.fillStyle = '#C8FF4D';
+    ctx.fillText('OUNWAN', 60, 76);
+
+    ctx.font = '700 16px Pretendard, sans-serif';
+    ctx.fillStyle = '#8E8E93';
+    ctx.fillText('오늘 운동, 사진에 박아서', 186, 82);
+
+    const monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    ctx.font = '900 68px Pretendard, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(`${y}.${OW.pad(m + 1)}`, 60, 122);
+
+    ctx.font = '800 20px Pretendard, sans-serif';
+    ctx.fillStyle = '#8A8A93';
+    ctx.fillText(monthNames[m], 60, 204);
+
+    // 3. 요약 통계 카드 3개
+    const ms = OW.monthStats(y, m);
+    const streak = OW.calcStreak();
+    const stats = [
+      { num: `${ms.days}일`, lbl: '이달 운동' },
+      { num: `${streak}일`, lbl: '연속 달성', hot: true },
+      { num: `${ms.photos}장`, lbl: '오운완 사진' }
+    ];
+    const statW = (W - 120 - 24) / 3;
+    stats.forEach((st, i) => {
+      const sx = 60 + i * (statW + 12);
+      const sy = 246;
+      drawRoundRect(ctx, sx, sy, statW, 86, 16);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.stroke();
+
+      ctx.font = '900 32px Pretendard, sans-serif';
+      ctx.fillStyle = st.hot ? '#C8FF4D' : '#FFFFFF';
+      ctx.fillText(st.num, sx + 18, sy + 14);
+
+      ctx.font = '700 14px Pretendard, sans-serif';
+      ctx.fillStyle = '#8E8E93';
+      ctx.fillText(st.lbl, sx + 18, sy + 54);
+    });
+
+    // 4. 캘린더 요일 바 (SUN ~ SAT)
+    const gridY = 360;
+    const dows = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const gridW = W - 120;
+    const colGap = 8;
+    const colW = (gridW - colGap * 6) / 7;
+
+    dows.forEach((dw, i) => {
+      ctx.font = '800 16px Pretendard, sans-serif';
+      ctx.fillStyle = i === 0 ? '#FF6B6B' : i === 6 ? '#5E9EFF' : '#71717A';
+      ctx.textAlign = 'center';
+      ctx.fillText(dw, 60 + i * (colW + colGap) + colW / 2, gridY);
+    });
+    ctx.textAlign = 'left';
+
+    // 5. 날짜 그리드 계산
+    const firstDow = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const totalWeeks = Math.ceil((firstDow + daysInMonth) / 7);
+    const rowGap = 8;
+    const calH = 1080;
+    const rowH = Math.floor((calH - (totalWeeks - 1) * rowGap) / totalWeeks);
+    const startY = gridY + 32;
+    const tk = OW.today();
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const idx = firstDow + d - 1;
+      const col = idx % 7;
+      const row = Math.floor(idx / 7);
+      const cellX = 60 + col * (colW + colGap);
+      const cellY = startY + row * (rowH + rowGap);
+      const key = `${y}-${OW.pad(m + 1)}-${OW.pad(d)}`;
+      const L = S.logs[key];
+      const worked = OW.isWorkoutDay(L);
+      const photos = (L && L.photos) || [];
+      const isSun = new Date(y, m, d).getDay() === 0;
+
+      drawRoundRect(ctx, cellX, cellY, colW, rowH, 12);
+      ctx.save();
+      ctx.clip();
+
+      if (photos.length) {
+        try {
+          const pId = photos[photos.length - 1];
+          const rec = await OW.Photos.get(pId).catch(() => null);
+          const blob = rec && (rec.full || rec.thumb);
+          if (blob) {
+            const img = await loadBlobImage(blob);
+            const imgAspect = img.width / img.height;
+            const cellAspect = colW / rowH;
+            let sw, sh, sx, sy;
+            if (imgAspect > cellAspect) {
+              sh = img.height; sw = sh * cellAspect;
+              sx = (img.width - sw) / 2; sy = 0;
+            } else {
+              sw = img.width; sh = sw / cellAspect;
+              sx = 0; sy = (img.height - sh) / 2;
+            }
+            ctx.drawImage(img, sx, sy, sw, sh, cellX, cellY, colW, rowH);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+            ctx.fillRect(cellX, cellY, colW, rowH);
+          } else {
+            ctx.fillStyle = '#1F1F24';
+            ctx.fillRect(cellX, cellY, colW, rowH);
+          }
+        } catch (e) {
+          ctx.fillStyle = '#1F1F24';
+          ctx.fillRect(cellX, cellY, colW, rowH);
+        }
+      } else if (worked) {
+        ctx.fillStyle = '#182413';
+        ctx.fillRect(cellX, cellY, colW, rowH);
+        ctx.strokeStyle = '#C8FF4D';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(200, 255, 77, 0.15)';
+        ctx.beginPath();
+        ctx.arc(cellX + colW / 2, cellY + rowH * 0.65, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '700 16px Pretendard, sans-serif';
+        ctx.fillStyle = '#C8FF4D';
+        ctx.textAlign = 'center';
+        ctx.fillText('✓', cellX + colW / 2, cellY + rowH * 0.65 - 9);
+        ctx.textAlign = 'left';
+      } else {
+        ctx.fillStyle = key > tk ? '#161619' : '#1C1C20';
+        ctx.fillRect(cellX, cellY, colW, rowH);
+        ctx.strokeStyle = '#27272C';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      drawRoundRect(ctx, cellX, cellY, colW, rowH, 12);
+      ctx.lineWidth = key === tk ? 2.5 : 1;
+      ctx.strokeStyle = key === tk ? '#FFFFFF' : (photos.length ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)');
+      ctx.stroke();
+
+      if (photos.length || worked) {
+        const numStr = String(d);
+        ctx.font = '900 14px Pretendard, sans-serif';
+        const numW = ctx.measureText(numStr).width;
+        const pillW = Math.max(numW + 12, 24);
+        drawRoundRect(ctx, cellX + 6, cellY + 6, pillW, 22, 11);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(numStr, cellX + 6 + (pillW - numW) / 2, cellY + 9);
+      } else {
+        ctx.font = '800 14px Pretendard, sans-serif';
+        ctx.fillStyle = isSun ? '#FF6B6B' : (key > tk ? '#52525B' : '#A1A1AA');
+        ctx.fillText(String(d), cellX + 10, cellY + 9);
+      }
+
+      if (photos.length > 1) {
+        ctx.fillStyle = '#C8FF4D';
+        ctx.beginPath();
+        ctx.arc(cellX + colW - 12, cellY + 14, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 6. 하단 부위별 운동 통계 요약 (1510px ~ 1780px)
+    const botY = startY + totalWeeks * (rowH + rowGap) + 18;
+    if (botY < 1790) {
+      drawRoundRect(ctx, 60, botY, W - 120, 160, 20);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.font = '800 18px Pretendard, sans-serif';
+      ctx.fillStyle = '#E4E4E7';
+      ctx.fillText('이번 달 부위별 운동 횟수', 84, botY + 18);
+
+      const parts = ['가슴', '등', '어깨', '하체', '팔', '복근', '유산소'];
+      const counts = {}; parts.forEach(p => counts[p] = 0);
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${y}-${OW.pad(m + 1)}-${OW.pad(d)}`;
+        const L = S.logs[key];
+        if (L && L.ex) {
+          L.ex.forEach(x => {
+            if (x.done && x.part) counts[x.part] = (counts[x.part] || 0) + 1;
+          });
+        }
+      }
+
+      let chipX = 84;
+      const chipY = botY + 58;
+      const sortedParts = Object.keys(counts).filter(k => counts[k] > 0).sort((a, b) => counts[b] - counts[a]);
+      const displayParts = sortedParts.length ? sortedParts : ['가슴', '등', '하체', '어깨'];
+
+      displayParts.slice(0, 5).forEach(p => {
+        const cnt = counts[p] || 0;
+        const txt = `${p} ${cnt}회`;
+        ctx.font = '800 15px Pretendard, sans-serif';
+        const tw = ctx.measureText(txt).width;
+        drawRoundRect(ctx, chipX, chipY, tw + 22, 36, 18);
+        ctx.fillStyle = cnt > 0 ? 'rgba(200, 255, 77, 0.12)' : 'rgba(255, 255, 255, 0.05)';
+        ctx.fill();
+        ctx.strokeStyle = cnt > 0 ? 'rgba(200, 255, 77, 0.35)' : 'rgba(255, 255, 255, 0.1)';
+        ctx.stroke();
+        ctx.fillStyle = cnt > 0 ? '#C8FF4D' : '#71717A';
+        ctx.fillText(txt, chipX + 11, chipY + 9);
+        chipX += tw + 30;
+      });
+
+      ctx.font = '700 14px Pretendard, sans-serif';
+      ctx.fillStyle = '#71717A';
+      ctx.fillText('꾸준함이 만드는 가장 확실한 변화 · 오운완', 84, botY + 118);
+    }
+
+    // 7. 최하단 워터마크
+    ctx.textAlign = 'center';
+    ctx.font = '800 16px Pretendard, sans-serif';
+    ctx.fillStyle = '#52525B';
+    ctx.fillText('SWEAT NEVER LIES · OUNWAN 2026', W / 2, H - 46);
+    ctx.textAlign = 'left';
+
+    // 8. 블롭 변환 및 저장
+    cvs.toBlob(async blob => {
+      if (!blob) {
+        toast('달력 이미지 생성에 실패했습니다', 'bad');
+        calDownloading = false;
+        return;
+      }
+      const fname = `오운완_달력_${y}_${OW.pad(m + 1)}.jpg`;
+      const how = await exportBlob(blob, fname);
+      if (how === 'tab') toast('새 탭에 달력을 열었습니다. 길게 눌러 저장하세요');
+      else if (how === 'gallery' || how === 'download') toast('9:16 SNS 공유용 달력을 저장했습니다!', 'ok');
+      else toast('달력 저장이 완료되었습니다', 'ok');
+      calDownloading = false;
+    }, 'image/jpeg', 0.95);
+
+  } catch (err) {
+    console.error('[downloadCalImage]', err);
+    toast('달력 생성 중 오류가 발생했습니다: ' + err.message, 'bad');
+    calDownloading = false;
+  }
+}
 
 function renderCal() {
   const t0 = performance.now();

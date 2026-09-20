@@ -42,6 +42,10 @@
   --warn:#FBBF24;
   --ok:#4ADE80;
 
+  /* 애플 모션 토큰 (Apple HIG Fluid Spring) */
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
   /* 포인트 컬러 — 디자인 명세표 §7 미확정 항목.
      설정 > 포인트 컬러에서 3안 실시간 전환 (대표님 실물 판정용) */
   --ac:#C8FF4D;          /* 기본: 라임 */
@@ -796,14 +800,25 @@ body{padding-bottom:calc(var(--navh) + var(--safeb) + 48px);}
 .viewbanner .dur input{width:52px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 4px;
   text-align:center; font-weight:800; color:var(--txt);}
 
-/* 캘린더: 칸은 키우고 숫자는 줄여 사진이 더 보이게 */
-.cal-grid{gap:4px;}
-.cal-grid .pad{aspect-ratio:1/1.42;}
-.day{aspect-ratio:1/1.42; border-radius:11px;}
-.day .dnum{top:3px; left:3px; min-width:16px; height:16px; padding:0 4px; font-size:9.5px; border-radius:8px; z-index:2;}
+/* 캘린더: 칸과 사진을 대폭 키워 오운완 사진이 훨씬 시원하고 크게 보이게 (피드백 반영) */
+#pg-cal .card:first-of-type{padding:16px 10px;}
+.cal-grid{gap:3.5px;}
+.cal-grid .pad{aspect-ratio:1/1.55;}
+.day{aspect-ratio:1/1.55; border-radius:12px; transition:transform .12s var(--ease-apple);}
+.day:active{transform:scale(.94);}
+.day .ph{border-radius:11px;}
+.day .dnum{top:4px; left:4px; min-width:18px; height:18px; padding:0 5px; font-size:10px; border-radius:9px; z-index:2;}
 /* 아이콘 달력(C): 아이콘이 숫자를 가리지 않게 아래쪽으로 */
 .day .cico{top:auto; bottom:22%; transform:translate(-50%,0); width:20px; height:20px;}
 .day .hintcam{top:auto; bottom:20%; transform:translate(-50%,0);}
+
+/* 애플 햅틱 터치 피드백 (Active Scale Feedback) */
+.btn:active, .tab:active, .nav:active, .sx:active, .setrow-l:active, .opt:active{
+  transform:scale(.95);
+  transition:transform .12s var(--ease-apple);
+}
+.tab svg{transition:transform .15s var(--ease-spring);}
+.tab.on svg{transform:scale(1.08);}
 
 /* 타이머 미사용(설정): 버튼·바·패널 전부 숨김 */
 body.notimer #timerFab, body.notimer #restBar, body.notimer #timerPanel{display:none !important;}
