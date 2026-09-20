@@ -1532,17 +1532,18 @@ if ($('btnCalDownload')) $('btnCalDownload').onclick = () => downloadCalImage(ca
 /* ───── 9:16 SNS 공유용 고화질 달력 다운로드 ───── */
 let calDownloading = false;
 function drawRoundRect(ctx, x, y, w, h, r) {
-  if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+  if (ctx.roundRect) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
   ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
 
@@ -1602,7 +1603,7 @@ async function downloadCalImage(y, m) {
 
     // 3. 요약 통계 카드 3개
     const ms = OW.monthStats(y, m);
-    const streak = OW.calcStreak();
+    const streak = (typeof OW.streak === 'function' ? OW.streak() : 0) || 0;
     const stats = [
       { num: `${ms.days}일`, lbl: '이달 운동' },
       { num: `${streak}일`, lbl: '연속 달성', hot: true },
@@ -1811,22 +1812,28 @@ async function downloadCalImage(y, m) {
 
     // 8. 블롭 변환 및 저장
     cvs.toBlob(async blob => {
-      if (!blob) {
-        toast('달력 이미지 생성에 실패했습니다', 'bad');
+      try {
+        if (!blob) {
+          toast('달력 이미지 생성에 실패했습니다', 'bad');
+          return;
+        }
+        const fname = `오운완_달력_${y}_${OW.pad(m + 1)}.jpg`;
+        const how = await exportBlob(blob, fname, 'image/jpeg');
+        if (how === 'tab') toast('새 탭에 달력을 열었습니다. 길게 눌러 저장하세요');
+        else if (how === 'gallery' || how === 'download') toast('9:16 SNS 공유용 달력을 저장했습니다!', 'ok');
+        else if (how === 'share') toast('공유가 완료되었습니다', 'ok');
+        else toast('달력 저장이 완료되었습니다', 'ok');
+      } catch (e) {
+        console.error('[exportBlob]', e);
+        toast('달력 저장 중 오류가 발생했습니다: ' + (e.message || e), 'bad');
+      } finally {
         calDownloading = false;
-        return;
       }
-      const fname = `오운완_달력_${y}_${OW.pad(m + 1)}.jpg`;
-      const how = await exportBlob(blob, fname);
-      if (how === 'tab') toast('새 탭에 달력을 열었습니다. 길게 눌러 저장하세요');
-      else if (how === 'gallery' || how === 'download') toast('9:16 SNS 공유용 달력을 저장했습니다!', 'ok');
-      else toast('달력 저장이 완료되었습니다', 'ok');
-      calDownloading = false;
     }, 'image/jpeg', 0.95);
 
   } catch (err) {
     console.error('[downloadCalImage]', err);
-    toast('달력 생성 중 오류가 발생했습니다: ' + err.message, 'bad');
+    toast('달력 생성 중 오류가 발생했습니다: ' + (err.message || err), 'bad');
     calDownloading = false;
   }
 }

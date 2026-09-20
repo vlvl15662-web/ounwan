@@ -813,6 +813,7 @@ Object.assign(g.OW, {
   Photos, dropPhotoCache, thumbURL,
   isWorkoutDay, doneSetCount, hasUserInput, fullDoneExCount, doneExercises,
   volumeOf, durationOf, streak, streakForPhoto, totalDays, weekDays, monthStats,
+  calcStreak: streak,
   streakUpTo, streakBest, nextGoal, daysTogether, hallOfFame, lastMissedDay,
   partCounts, badgeParts,
   plateTier, plateNext,
