@@ -3232,48 +3232,19 @@ function boot() {
   initPwaInstall();
 }
 
-/* 안드로이드/웹 브라우저 PWA 홈 화면 추가 지원 */
-let deferredInstallPrompt = null;
+/* 안드로이드 웹 브라우저 접속 시 APK 다운로드 지원 */
 function initPwaInstall() {
-  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const card = $('cardInstallApp');
   const btn = $('btnInstallPwa');
   if (!card || !btn) return;
 
-  if (!NATIVE.on && !isStandalone()) {
+  const isAndroid = /android/i.test(navigator.userAgent);
+  if (!NATIVE.on && isAndroid) {
     card.style.display = '';
   }
 
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    if (!NATIVE.on && !isStandalone()) card.style.display = '';
-  });
-
-  btn.addEventListener('click', async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      try {
-        const choice = await deferredInstallPrompt.userChoice;
-        if (choice && choice.outcome === 'accepted') {
-          card.style.display = 'none';
-          toast('오운완 앱이 홈 화면에 추가되었습니다');
-        }
-      } catch (_) {}
-      deferredInstallPrompt = null;
-    } else {
-      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
-      if (isIos) {
-        toast('Safari 하단 공유(↑) 버튼 → [홈 화면에 추가]를 눌러주세요');
-      } else {
-        toast('브라우저 우측 메뉴(⋮) → [앱 설치] 또는 [홈 화면에 추가]를 눌러주세요');
-      }
-    }
-  });
-
-  window.addEventListener('appinstalled', () => {
-    card.style.display = 'none';
-    deferredInstallPrompt = null;
+  btn.addEventListener('click', () => {
+    toast('오운완 APK 다운로드를 시작합니다');
   });
 }
 /** 마지막 운동일의 dayIdx + 1 을 오늘의 시작 인덱스로 삼는다.
