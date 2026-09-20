@@ -207,11 +207,11 @@ function doneSetCount(log) {
   log.ex.forEach(e => (e.sets || []).forEach(s => { if (s.done) n++; }));
   return n;
 }
-/** 사용자가 손으로 값을 넣은 종목인가 — 체크했거나(done), 무게·횟수를 직접 친(t) 세트가 있으면 참.
+/** 사용자가 손으로 값을 넣은 종목인가 — 체크했거나(done), 무게·횟수를 직접 친(t) 세트가 있거나, 메모(note)가 있으면 참.
     프리필·＋세트가 채워 넣은 값은 `t`가 없어 여기 걸리지 않는다.
-    근거: 코드진단서 P2 "kg만 적고 체크 안 한 종목이 확인 없이 사라짐". */
+    근거: 코드진단서 P2 "kg만 적고 체크 안 한 종목이 확인 없이 사라짐", QA-2 "메모만 적어둔 날 삭제 방지". */
 function hasUserInput(e) {
-  return !!e && (e.sets || []).some(s => s.done || s.t);
+  return !!e && ((e.sets || []).some(s => s.done || s.t) || !!(e.note && e.note.trim()));
 }
 function doneExCount(log) {
   if (!log || !log.ex) return 0;
@@ -582,10 +582,12 @@ function pruneEmptyLogs() {
   Object.keys(S.logs).forEach(k => {
     if (k >= t) return;
     const L = S.logs[k];
-    /* isWorkoutDay는 '체크한 세트 또는 사진'만 본다. 무게만 적어둔 날은 그 기준으로는 빈 날이지만
-       사용자에게는 적어둔 기록이 있는 날이다 — 앱을 껐다 켜면 조용히 사라지던 결함(P2, 2026-09-08).
+    /* isWorkoutDay는 '체크한 세트 또는 사진'만 본다. 무게만 적어둔 날이나 메모만 적어둔 날은
+       그 기준으로는 빈 날이지만 사용자에게는 적어둔 기록이 있는 날이다 — 앱을 껐다 켜면 조용히 사라지던 결함(P2, QA-2).
        하루가 지난 뒤이므로 이월은 하지 않되, 지우지도 않는다. */
-    if (!isWorkoutDay(L) && !(L.ex || []).some(hasUserInput)) { delete S.logs[k]; }
+    const hasNote = !!(L.note && L.note.trim());
+    const hasInput = (L.ex || []).some(hasUserInput);
+    if (!isWorkoutDay(L) && !hasInput && !hasNote) { delete S.logs[k]; }
     /* 종료를 안 누르고 넘어간 세션 — 시작 시각 기준 2시간으로 닫는다.
        그날 자정 기준으로 닫으면 저녁 운동의 종료가 시작보다 앞서 시간이 0분이 된다. */
     else if (!L.end && L.start) { L.end = L.start + 2 * 3600 * 1000; }

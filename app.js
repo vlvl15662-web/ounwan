@@ -396,7 +396,8 @@ $('obNext').onclick = () => {
   /* doneSetCount가 아니라 hasUserInput으로 본다 — 체크는 안 했지만 무게를 적어둔 종목도
      '손댄 기록'이다. 예전에는 이 줄이 그것을 확인 없이 통째로 지웠다(P2, 2026-09-08). */
   const k = curKey(), L = S.logs[k];
-  if (L && !(L.ex || []).some(e => OW.hasUserInput(e)) && !(L.photos || []).length) delete S.logs[k];
+  const hasNote = !!(L && ((L.note && L.note.trim()) || (L.ex || []).some(e => e.note && e.note.trim())));
+  if (L && !hasNote && !(L.ex || []).some(e => OW.hasUserInput(e)) && !(L.photos || []).length) delete S.logs[k];
   OW.save(true);
   $('mOnboard').classList.remove('on');
   toast('루틴이 준비됐습니다', 'ok');
@@ -1169,10 +1170,11 @@ async function swapToDay(pick) {
   const k = curKey();
   const cur = S.logs[k];
   if (cur && cur.dayIdx === pick) { S.dayIdx = pick; OW.save(); return true; }   // 이미 그 부위 — 기록을 건드릴 이유가 없다
-  /* 확인 조건에 hasUserInput을 넣는다 — 체크는 안 했지만 kg·횟수를 적어둔 종목도 '버리는 것'이다(P2) */
+  /* 확인 조건에 hasUserInput을 넣는다 — 체크는 안 했지만 kg·횟수를 적어둔 종목도 '버리는 것'이다(P2, QA-2) */
   const typed = cur && (cur.ex || []).some(e => OW.hasUserInput(e));
-  if (cur && (typed || cur.start || (cur.ex || []).some(e => e.note))) {
-    if (!await confirmBox('오늘 기록을 버릴까요?', '적어둔 무게·횟수와 체크한 세트가 모두 사라집니다.', '버리고 변경')) return false;
+  const hasNote = cur && (!!(cur.note && cur.note.trim()) || (cur.ex || []).some(e => e.note && e.note.trim()));
+  if (cur && (typed || cur.start || hasNote)) {
+    if (!await confirmBox('오늘 기록을 버릴까요?', '적어둔 무게·횟수와 메모, 체크한 세트가 모두 사라집니다.', '버리고 변경')) return false;
   }
   if (cur && (cur.photos || []).length) {         // 사진이 있으면 로그는 유지하고 종목만 교체
     const day = OW.routineDay(pick);
