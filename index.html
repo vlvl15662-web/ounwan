@@ -24,27 +24,21 @@
 <link rel="stylesheet" href="themes2.css">
 <!-- v2 신규 컴포넌트 (루틴 카드·부위 바·테마 시트). 테마 토큰 위에 조판만 얹는다. -->
 <link rel="stylesheet" href="v2.css">
-<link rel="preload" as="image" href="splash.jpg">
 </head>
 <body>
 
-<!-- ══════════════════ 3초 오프닝 스플래시 / 로딩 화면 ══════════════════ -->
+<!-- ══════════════════ 1.5초 통통 튕기는 로고 로딩 화면 ══════════════════ -->
 <div id="splashScreen" class="splash-screen" role="dialog" aria-modal="true" aria-label="너 오늘도 쉼? 로딩">
-  <div class="splash-bg">
-    <img src="splash.jpg" alt="운동하는 사람" class="splash-img" id="splashImg">
-    <div class="splash-gradient"></div>
-  </div>
-  <div class="splash-content">
-    <div class="splash-badge">
-      <img src="icon-192.png" alt="너 오늘도 쉼? 로고">
+  <div class="splash-center">
+    <div class="splash-bounce-stage">
+      <div class="splash-logo-box">
+        <img src="icon-192.png" alt="너 오늘도 쉼? 로고" class="splash-bouncy-logo" id="splashLogo">
+      </div>
+      <div class="splash-shadow"></div>
     </div>
     <h1 class="splash-title">너 오늘도 쉼?</h1>
-    <p class="splash-subtitle">SWEAT NEVER LIES · 오늘 운동 완료</p>
-    <div class="splash-bar-wrap">
-      <div class="splash-bar" id="splashBar"></div>
-    </div>
+    <p class="splash-subtitle">오늘 운동, 사진에 박아서</p>
   </div>
-  <button type="button" class="splash-skip" id="btnSplashSkip" aria-label="로딩 건너뛰기">건너뛰기</button>
 </div>
 
 <!-- ══════════════════ 앱바 ══════════════════ -->
@@ -459,7 +453,7 @@
   <div class="card">
     <h2>정보</h2>
     <div class="sub">
-      너 오늘도 쉼? v1.0.38 · 로컬 저장 전용<br>
+      너 오늘도 쉼? v1.0.40 · 로컬 저장 전용<br>
       근거 문서: PRD v1.0 / DEC-001~005 / CR-2026-08-25 / 디자인 수치명세표 v1.0
     </div>
     <div class="divider"></div>

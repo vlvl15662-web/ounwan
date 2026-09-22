@@ -3240,7 +3240,7 @@ function boot() {
   initSplash();
 }
 
-/* ══════════════════ 3초 오프닝 스플래시 / 로딩 화면 ══════════════════ */
+/* ══════════════════ 1.5초 통통 튕기는 로고 로딩 화면 ══════════════════ */
 function initSplash() {
   const el = $('splashScreen');
   if (!el) return;
@@ -3249,12 +3249,10 @@ function initSplash() {
     if (done) return;
     done = true;
     el.classList.add('hide');
-    setTimeout(() => { el.style.display = 'none'; }, 700);
+    setTimeout(() => { el.style.display = 'none'; }, 400);
   };
-  const skipBtn = $('btnSplashSkip');
-  if (skipBtn) skipBtn.onclick = e => { e.stopPropagation(); dismiss(); };
   el.onclick = dismiss;
-  setTimeout(dismiss, 3000);
+  setTimeout(dismiss, 1500);
 }
 
 /* 안드로이드 웹 브라우저 접속 시 APK 다운로드 지원 */
