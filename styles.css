@@ -829,3 +829,182 @@ body.restbar{padding-bottom:calc(var(--navh) + var(--safeb) + 176px);}
 /* 루틴 편집: 1안/2안 탭 줄 */
 .varrow{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
 .varrow .chips{flex:1; margin:0;}
+
+/* ══════════════════ 3초 오프닝 스플래시 / 로딩 화면 ══════════════════ */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background-color: #0f1012;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.65s cubic-bezier(0.32, 0.72, 0, 1),
+              transform 0.65s cubic-bezier(0.32, 0.72, 0, 1),
+              visibility 0.65s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: opacity, transform;
+}
+
+.splash-screen.hide {
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.splash-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0f1012;
+}
+
+.splash-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  animation: splashKenBurns 3.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  will-change: transform;
+}
+
+@keyframes splashKenBurns {
+  0% { transform: scale(1.0); }
+  100% { transform: scale(1.08); }
+}
+
+.splash-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 16, 18, 0.35) 0%,
+    rgba(15, 16, 18, 0.05) 35%,
+    rgba(15, 16, 18, 0.45) 60%,
+    rgba(15, 16, 18, 0.88) 82%,
+    #0f1012 100%
+  );
+  pointer-events: none;
+}
+
+.splash-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 24px calc(env(safe-area-inset-bottom, 24px) + 38px);
+  width: 100%;
+  max-width: 440px;
+}
+
+.splash-badge {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7), 0 0 25px rgba(200, 255, 77, 0.28);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  margin-bottom: 16px;
+  transform: translateY(24px);
+  opacity: 0;
+  animation: splashFadeUp 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.15s forwards;
+}
+
+.splash-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.splash-title {
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.6px;
+  margin: 0 0 8px;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.85);
+  transform: translateY(20px);
+  opacity: 0;
+  animation: splashFadeUp 0.8s cubic-bezier(0.32, 0.72, 0, 1) 0.3s forwards;
+}
+
+.splash-subtitle {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ac, #C8FF4D);
+  letter-spacing: 0.8px;
+  margin: 0 0 28px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+  transform: translateY(18px);
+  opacity: 0;
+  animation: splashFadeUp 0.8s cubic-bezier(0.32, 0.72, 0, 1) 0.45s forwards;
+}
+
+.splash-bar-wrap {
+  width: 130px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  overflow: hidden;
+  opacity: 0;
+  animation: splashFade 0.4s ease-out 0.55s forwards;
+}
+
+.splash-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--ac, #C8FF4D), #ffffff);
+  border-radius: 3px;
+  animation: splashProgress 2.6s cubic-bezier(0.25, 1, 0.5, 1) 0.3s forwards;
+}
+
+@keyframes splashFadeUp {
+  0% { opacity: 0; transform: translateY(22px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes splashProgress {
+  0% { width: 0%; }
+  35% { width: 45%; }
+  70% { width: 80%; }
+  100% { width: 100%; }
+}
+
+.splash-skip {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 16px) + 14px);
+  right: 18px;
+  z-index: 4;
+  background: rgba(15, 16, 18, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease-apple), background 0.2s;
+  letter-spacing: -0.2px;
+}
+.splash-skip:active {
+  transform: scale(0.93);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+

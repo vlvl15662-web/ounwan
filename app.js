@@ -3237,6 +3237,24 @@ function boot() {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
   initPwaInstall();
+  initSplash();
+}
+
+/* ══════════════════ 3초 오프닝 스플래시 / 로딩 화면 ══════════════════ */
+function initSplash() {
+  const el = $('splashScreen');
+  if (!el) return;
+  let done = false;
+  const dismiss = () => {
+    if (done) return;
+    done = true;
+    el.classList.add('hide');
+    setTimeout(() => { el.style.display = 'none'; }, 700);
+  };
+  const skipBtn = $('btnSplashSkip');
+  if (skipBtn) skipBtn.onclick = e => { e.stopPropagation(); dismiss(); };
+  el.onclick = dismiss;
+  setTimeout(dismiss, 3000);
 }
 
 /* 안드로이드 웹 브라우저 접속 시 APK 다운로드 지원 */
