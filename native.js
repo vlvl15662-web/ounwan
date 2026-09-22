@@ -31,7 +31,7 @@ var NATIVE = (() => {
     });
   }
 
-  /** 사진을 기기 갤러리에 저장한다 (Pictures/오운완 앨범) */
+  /** 사진을 기기 갤러리에 저장한다 (Pictures/너 오늘도 쉼? 앨범) */
   async function saveImage(blob, name, mime) {
     const data = await b64(blob);
     await plug('Gallery').saveImage({ data, name, mime: mime || 'image/jpeg' });
@@ -52,7 +52,7 @@ var NATIVE = (() => {
     const FS = plug('Filesystem');
     const w = await FS.writeFile({ path: name, data, directory: 'CACHE' });
     try {
-      await plug('Share').share({ files: [w.uri], text: text || undefined, dialogTitle: '오운완 공유' });
+      await plug('Share').share({ files: [w.uri], text: text || undefined, dialogTitle: '너 오늘도 쉼? 공유' });
       return 'share';
     } catch (e) {
       const m = String((e && e.message) || e).toLowerCase();

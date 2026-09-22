@@ -1800,14 +1800,14 @@ async function downloadCalImage(y, m) {
 
       ctx.font = '700 14px Pretendard, sans-serif';
       ctx.fillStyle = '#71717A';
-      ctx.fillText('꾸준함이 만드는 가장 확실한 변화 · 오운완', 84, botY + 118);
+      ctx.fillText('꾸준함이 만드는 가장 확실한 변화 · 너 오늘도 쉼?', 84, botY + 118);
     }
 
     // 7. 최하단 워터마크
     ctx.textAlign = 'center';
     ctx.font = '800 16px Pretendard, sans-serif';
     ctx.fillStyle = '#52525B';
-    ctx.fillText('SWEAT NEVER LIES · OUNWAN 2026', W / 2, H - 46);
+    ctx.fillText('SWEAT NEVER LIES · REST TODAY? 2026', W / 2, H - 46);
     ctx.textAlign = 'left';
 
     // 8. 블롭 변환 및 저장
@@ -1817,7 +1817,7 @@ async function downloadCalImage(y, m) {
           toast('달력 이미지 생성에 실패했습니다', 'bad');
           return;
         }
-        const fname = `오운완_달력_${y}_${OW.pad(m + 1)}.jpg`;
+        const fname = `너오늘도쉼_달력_${y}_${OW.pad(m + 1)}.jpg`;
         const how = await exportBlob(blob, fname, 'image/jpeg');
         if (how === 'tab') toast('새 탭에 달력을 열었습니다. 길게 눌러 저장하세요');
         else if (how === 'gallery' || how === 'download') toast('9:16 SNS 공유용 달력을 저장했습니다!', 'ok');
@@ -1991,7 +1991,7 @@ $('ddSave').onclick = async () => {
   const rec = await OW.Photos.get(ddPhotos[ddIdx]);
   const blob = rec && (rec.full || rec.thumb);
   if (!blob) return toast('원본이 정리되어 없습니다 (썸네일만 남아 있습니다)', 'bad');
-  const how = await exportBlob(blob, `오운완_${ddKey}.jpg`);
+  const how = await exportBlob(blob, `너오늘도쉼_${ddKey}.jpg`);
   if (how === 'tab') toast('새 탭에 열었습니다. 길게 눌러 저장하세요');
   else if (how === 'gallery') toast('갤러리에 저장했습니다', 'ok');
 };
@@ -2415,7 +2415,7 @@ $('btnSave').onclick = async () => {
     if (!full) return toast('이미지를 만들지 못했습니다', 'bad');
     /* 사용자 산출물(사진)을 먼저 확정하고, 그 다음에 저장소에 기록한다 */
     const key = curKey();
-    const how = await exportBlob(full, `오운완_${key}.${png ? 'png' : 'jpg'}`, png ? 'image/png' : 'image/jpeg');
+    const how = await exportBlob(full, `너오늘도쉼_${key}.${png ? 'png' : 'jpg'}`, png ? 'image/png' : 'image/jpeg');
     if (how === 'abort') return toast('저장을 취소했습니다.');
 
     let stored = true, why = '';
@@ -2441,7 +2441,7 @@ $('btnShare').onclick = async () => {
     const full = await OW.overlayToBlob(cv, png ? 1 : 0.92, mime);
     if (!full) return toast('이미지를 만들지 못했습니다', 'bad');
     const key = curKey();
-    const file = new File([full], `오운완_${key}.${png ? 'png' : 'jpg'}`, { type: mime });
+    const file = new File([full], `너오늘도쉼_${key}.${png ? 'png' : 'jpg'}`, { type: mime });
     const tags = hashtags();
     const persist = async () => {
       try { await persistShot(full); return ''; }
@@ -2449,7 +2449,7 @@ $('btnShare').onclick = async () => {
     };
     if (NATIVE.on) {
       /* 네이티브 공유 시트 (WebView에는 navigator.share가 없다) */
-      const how = await NATIVE.shareImage(full, `오운완_${key}.${png ? 'png' : 'jpg'}`, mime, tags);
+      const how = await NATIVE.shareImage(full, `너오늘도쉼_${key}.${png ? 'png' : 'jpg'}`, mime, tags);
       if (how === 'abort') return toast('공유를 취소했습니다. 기록되지 않았습니다.');
       const err = await persist();
       toast(err ? '공유는 됐지만 캘린더 기록에 실패했습니다.\n' + err : '공유 완료 · 캘린더에 기록됨', err ? 'bad' : 'ok');
@@ -2465,7 +2465,7 @@ $('btnShare').onclick = async () => {
       toast(err ? '공유는 됐지만 캘린더 기록에 실패했습니다.\n' + err : '공유 완료 · 캘린더에 기록됨', err ? 'bad' : 'ok');
     } else {
       const err = await persist();
-      await exportBlob(full, `오운완_${key}.${png ? 'png' : 'jpg'}`, mime);
+      await exportBlob(full, `너오늘도쉼_${key}.${png ? 'png' : 'jpg'}`, mime);
       copyText(tags);
       toast(err ? '사진은 저장했지만 캘린더 기록에 실패했습니다.\n' + err
                 : '이 브라우저는 공유 시트를 지원하지 않아 사진 저장 + 해시태그 복사로 처리했습니다', err ? 'bad' : 'ok');
@@ -2479,7 +2479,7 @@ function defaultHashtags() {
   const L = S.logs[curKey()];
   const part = L ? (L.label || '').replace(/[^가-힣a-zA-Z]/g, '') : '';
   const st = OW.streakForPhoto();
-  const t = ['#오운완', '#오늘운동완료', '#헬스타그램', '#운동스타그램', '#헬스', '#운동기록', '#웨이트트레이닝'];
+  const t = ['#너오늘도쉼', '#오운완', '#오늘운동완료', '#헬스타그램', '#운동스타그램', '#헬스', '#운동기록', '#웨이트트레이닝'];
   if (part) t.splice(2, 0, '#' + part + '운동');
   if (st >= 2) t.push('#' + st + '일차');
   return t.join(' ');
@@ -2516,7 +2516,7 @@ $('btnDual').onclick = async () => {
       doRender();
       const b = await OW.overlayToBlob(cv, png ? 1 : 0.92, mime);
       if (!b) continue;
-      await exportBlob(b, `오운완_${key}_${tag}.${ext}`, mime);
+      await exportBlob(b, `너오늘도쉼_${key}_${tag}.${ext}`, mime);
       made.push({ tag, blob: b, ratio: r });
     }
     if (!made.length) return toast('이미지를 만들지 못했습니다', 'bad');
@@ -2997,7 +2997,7 @@ $('btnBackup').onclick = async () => {
     const blob = await OW.exportBackupBlob(withPhotos, (i, total) => {
       if (tag) tag.textContent = `백업 중 ${i}/${total}`;
     });
-    const backupName = `오운완_백업_${OW.today()}.json`;
+    const backupName = `너오늘도쉼_백업_${OW.today()}.json`;
     if (NATIVE.on) {
       await NATIVE.saveFile(blob, backupName, 'application/json');
       toast(`다운로드 폴더에 저장했습니다: ${backupName} (${(blob.size / 1048576).toFixed(1)}MB)`, 'ok');
@@ -3251,7 +3251,7 @@ function initPwaInstall() {
   }
 
   btn.addEventListener('click', () => {
-    toast('오운완 APK 다운로드를 시작합니다');
+    toast('너 오늘도 쉼? APK 다운로드를 시작합니다');
   });
 }
 /** 마지막 운동일의 dayIdx + 1 을 오늘의 시작 인덱스로 삼는다.

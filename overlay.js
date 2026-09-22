@@ -47,7 +47,7 @@ function ensureFonts() {
     const weights = [600, 700, 800, 900];
     try {
       await Promise.race([
-        Promise.all(weights.map(w => document.fonts.load(`${w} 40px Pretendard`, '오운완0123가나다'))),
+        Promise.all(weights.map(w => document.fonts.load(`${w} 40px Pretendard`, '너오늘도쉼오운완0123가나다'))),
         new Promise(r => setTimeout(r, 4000))
       ]);
       return document.fonts.check('800 40px Pretendard');
@@ -426,7 +426,7 @@ const Engine = {
    ══════════════════════════════════════════════════════════════ */
 /** 스트릭 표기 — PRD §8.5 대조표: 'N회 연속'. 'D+n'·'N일 연속'은 폐기됐다. */
 function streakLabel(n) { return (n || 0) + '회 연속'; }
-const APP_NAME = '오운완';           // §5.3: 앱명은 상수 1곳만 교체하면 되게 둔다
+const APP_NAME = '너 오늘도 쉼?';           // §5.3: 앱명은 상수 1곳만 교체하면 되게 둔다
 
 /** 사진 하단 55% 영역의 평균 밝기(0~1)로 3단계를 정한다.
     경계값 0.45 / 0.62는 QA 확정치 — 구두 조정 금지, 개정 시 명세표를 갱신한다.
@@ -711,7 +711,7 @@ function drawA(K) {
     let lx = x;
     const leftMax = right - streakW;
     if (F.logo) {
-      const logo = data.logo || '오운완';
+      const logo = data.logo || APP_NAME;
       K.fitFont(logo, 30, 800, Math.max(20, leftMax - lx), 18);
       lx += K.tracked(logo, lx, fy, 2) + 22 * K.u;
     }
@@ -910,7 +910,7 @@ function drawB(K) {
   y += rows * lineH;
 
   const foot = [];
-  if (F.logo) foot.push(data.logo || '오운완');
+  if (F.logo) foot.push(data.logo || APP_NAME);
   if (F.vol && data.vol) foot.push(fmtVol(data.vol));
   if (F.volfun && data.vol) { const vf = volFun(data.vol); if (vf) foot.push(vf); }
   if (F.dur && data.dur) foot.push(fmtDur(data.dur));
@@ -941,7 +941,7 @@ function drawC(K) {
   const padX = 12 * 2.77 * u, padY = 7 * 2.77 * u;
 
   K.font(43, 900);
-  const mainTxt = (F.date && data.date) ? data.date : (data.logo || '오운완');
+  const mainTxt = (F.date && data.date) ? data.date : (data.logo || APP_NAME);
   const dw = K.trackedW(mainTxt, 1.5);
 
   const subParts = [];
@@ -1111,7 +1111,7 @@ function drawD(K) {
   }
   if (F.logo) {
     ctx.fillStyle = dim; K.font(26, 800);
-    K.tracked(data.logo || '오운완', pad, H - SS * 0.038, 2);
+    K.tracked(data.logo || APP_NAME, pad, H - SS * 0.038, 2);
   }
 
   return { x: 0, y: H - barBot, w: W, h: barBot, fixed: true,

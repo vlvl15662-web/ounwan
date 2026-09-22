@@ -1,7 +1,7 @@
 {
-  "name": "오운완 — 오늘 운동, 사진에 박아서",
-  "short_name": "오운완",
-  "description": "웨이트 트레이닝 기록과 오운완 인증샷을 한 번에. 오늘 한 운동이 사진에 자동으로 합성됩니다.",
+  "name": "너 오늘도 쉼? — 오늘 운동, 사진에 박아서",
+  "short_name": "너 오늘도 쉼?",
+  "description": "웨이트 트레이닝 기록과 인증샷을 한 번에. 오늘 한 운동이 사진에 자동으로 합성됩니다.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -24,6 +24,18 @@
     {
       "src": "icon-192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },

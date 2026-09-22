@@ -707,7 +707,7 @@ function validateState(st) {
 }
 
 async function importBackup(payload) {
-  if (!payload || payload.app !== 'owwan') throw new Error('오운완 백업 파일이 아닙니다.');
+  if (!payload || (payload.app !== 'owwan' && payload.app !== 'resttoday')) throw new Error('너 오늘도 쉼? 백업 파일이 아닙니다.');
   if (Array.isArray(payload.photos) && payload.photos.length > LIMITS.photos) {
     throw new Error('백업 파일의 사진 수가 비정상적으로 많습니다.');
   }
